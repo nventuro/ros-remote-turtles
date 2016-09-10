@@ -4,7 +4,7 @@ import rospy
 from geometry_msgs.msg import Twist, Point
 from turtlesim.msg import Pose
 
-from math import atan
+from math import atan, pi
 
 # The turtle's position - this is set by the subsriber callback
 turtle_pose = Pose()
@@ -53,7 +53,13 @@ def move_straight(target, speed, tolerance, rate, pub):
     stop(pub) # Stop moving
 
 def angle_between_points(point_a, point_b):
-    return atan((point_b.y - point_a.y) / (point_b.x - point_a.x))
+    if abs(point_b.x - point_a.x) < 0.0001: # These are floating point numbers, so we don't check for equality directly
+        if point_b.y - point_a.y > 0:
+            return pi/2
+        else:
+            return -pi/2
+    else:
+        return atan((point_b.y - point_a.y) / (point_b.x - point_a.x))
 
 def are_points_equal(point_a, point_b, tolerance, coords=["x", "y", "z"]):
     return all([abs(getattr(point_a, coord) - getattr(point_b, coord)) < tolerance for coord in coords])

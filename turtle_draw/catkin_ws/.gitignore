@@ -1,0 +1,4 @@
+# catkin output
+
+build/*
+devel/*

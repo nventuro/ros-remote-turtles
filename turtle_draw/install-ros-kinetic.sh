@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # First we need to add packages.ros.org to the list of package sources
 

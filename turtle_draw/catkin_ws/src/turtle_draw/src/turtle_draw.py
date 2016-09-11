@@ -3,6 +3,7 @@
 import rospy
 from geometry_msgs.msg import Twist, Point
 from turtlesim.msg import Pose
+from turtlesim.srv import SetPen
 
 from math import atan2, sqrt, pi
 import time
@@ -23,7 +24,13 @@ def main():
 
     time.sleep(0.5) # We need to sleep for a bit to let the subscriber fetch the current pose at least once
 
-    for point in points:
+    turtle1_set_pen = rospy.ServiceProxy('turtle1/set_pen', SetPen)
+
+    turtle1_set_pen(255, 255, 255, 3, 1)
+    move_straight(Pose(x=points[0].x, y=points[0].y), 1, 1, 0.1, rate, pub)
+
+    turtle1_set_pen(255, 255, 255, 3, 0)
+    for point in points[1:]:
         move_straight(Pose(x=point.x, y=point.y), 1, 1, 0.1, rate, pub)
 
     rospy.loginfo("We're done!")

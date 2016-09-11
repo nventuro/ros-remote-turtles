@@ -6,11 +6,14 @@ from turtlesim.msg import Pose
 
 from math import atan2, sqrt, pi
 import time
+import argparse
 
 # The turtle's position - this is set by the subsriber callback
 turtle_pose = Pose()
 
 def main():
+    points = parse_cmd_args()
+
     rospy.init_node("turtle_draw")
 
     pub = rospy.Publisher('/turtle1/cmd_vel', Twist, queue_size=10)
@@ -20,13 +23,31 @@ def main():
 
     time.sleep(0.5) # We need to sleep for a bit to let the subscriber fetch the current pose at least once
 
-    points = [[8, 8], [5, 10], [2, 8], [0, 5], [2, 2], [5, 0], [8, 2], [10, 5], [8, 8]]
     for point in points:
         move_straight(Pose(x=point[0], y=point[1]), 1, 1, 0.1, rate, pub)
 
     rospy.loginfo("We're done!")
     while not rospy.is_shutdown():
         rate.sleep()
+
+def parse_cmd_args():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--figure", help = "a figure file")
+    args = vars(parser.parse_args())
+
+    if args["figure"]:
+        return parse_figure_file(args["figure"])
+    else:
+        return [[8, 8], [5, 10], [2, 8], [0, 5], [2, 2], [5, 0], [8, 2], [10, 5], [8, 8]]
+
+def parse_figure_file(filename):
+    with open(filename, "r") as f:
+        lines = f.readlines()
+
+    points = []
+    for line in lines:
+        points.append([float(i) for i in line.split(",")])
+    return points
 
 def pose_callback(pose):
     global turtle_pose

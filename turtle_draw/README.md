@@ -14,4 +14,4 @@ Run `compile.sh`.
 
 ## Usage
 
-Run `run-turtle-draw.sh` to start the node. The roscore must have been previously started by running `roscore`.
+Run `run-turtle-draw.sh` to start the node. The roscore must have been previously started by running `roscore`. To see all available options, run `run-turtle-draw.sh --help`.

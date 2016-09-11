@@ -27,18 +27,17 @@ def main():
 def pose_callback(pose):
     global turtle_pose
     turtle_pose = pose
-    rospy.loginfo("x: %.2f y: %.2f" % (pose.x, pose.y))
 
 def move_straight(target, speed, tolerance, rate, pub):
     rospy.loginfo("Going to x: %.2f y: %.2f" % (target.x, target.y))
 
     # We first spin, then move forward
 
-    target_theta = Pose(theta=angle_between_points(target, turtle_pose))
+    target_theta = angle_between_points(target, turtle_pose)
 
-    rospy.loginfo("Need to aquire theta: %.2f" % target_theta.theta)
-    while not are_points_equal(turtle_pose, target_theta, 0.2, coords=["theta"]) and not rospy.is_shutdown():
-        spin(speed, False, pub)
+    rospy.loginfo("Need to aquire theta: %.2f" % target_theta)
+    while not are_angles_equal(turtle_pose.theta, target_theta, deg_to_rad(1)) and not rospy.is_shutdown():
+        spin(speed, target_theta < 0, pub)
         rate.sleep()
 
     rospy.loginfo("Done spinning!")
@@ -64,6 +63,9 @@ def angle_between_points(point_a, point_b):
 def are_points_equal(point_a, point_b, tolerance, coords=["x", "y", "z"]):
     return all([abs(getattr(point_a, coord) - getattr(point_b, coord)) < tolerance for coord in coords])
 
+def are_angles_equal(angle_a, angle_b, tolerance):
+    return abs(normalize_rad(angle_a) - normalize_rad(angle_b)) < tolerance
+
 def spin(speed, clockwise, pub):
     pub.publish(Twist(linear=Point(0, 0, 0), angular=Point(0, 0, speed * (-1 if clockwise else 1))))
 
@@ -72,6 +74,16 @@ def advance(speed, forward, pub):
 
 def stop(pub):
     advance(0, True, pub)
+
+def deg_to_rad(deg):
+    return pi * deg / 180
+
+def normalize_rad(rad):
+    while rad > pi:
+        rad -= 2 * pi
+    while rad <= -pi:
+        rad += 2 * pi
+    return rad
 
 if __name__ == "__main__":
     main()

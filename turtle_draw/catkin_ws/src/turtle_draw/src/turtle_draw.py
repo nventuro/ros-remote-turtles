@@ -6,36 +6,46 @@ from turtlesim.msg import Pose
 from turtlesim.srv import SetPen
 
 from math import atan2, sqrt, pi
+from functools import partial
 import time
 import argparse
 
-# The turtle's position - this is set by the subsriber callback
-turtle_pose = Pose()
+# Each turtl's position - this is set by the subsriber callbacks
+turtle_poses = {}
 
 def main():
-    points = parse_cmd_args()
-
     rospy.init_node("turtle_draw")
 
-    pub = rospy.Publisher('/turtle1/cmd_vel', Twist, queue_size=10)
-    rospy.Subscriber("/turtle1/pose", Pose, pose_callback)
+    points = parse_cmd_args()
 
+    draw_figure(points, "turtle1")
+
+def draw_figure(points, turtle_name):
     rate = rospy.Rate(10) # 10 Hz
+
+    pub = rospy.Publisher("/%s/cmd_vel" % turtle_name, Twist, queue_size=10)
+    rospy.Subscriber("/%s/pose" % turtle_name, Pose, partial(pose_callback, turtle_name=turtle_name))
+    set_pen = rospy.ServiceProxy("%s/set_pen" % turtle_name, SetPen)
 
     time.sleep(0.5) # We need to sleep for a bit to let the subscriber fetch the current pose at least once
 
-    turtle1_set_pen = rospy.ServiceProxy('turtle1/set_pen', SetPen)
+    pen_off(set_pen)
+    move_straight(Pose(x=points[0].x, y=points[0].y), 1, 1, 0.1, rate, pub, turtle_name)
 
-    turtle1_set_pen(255, 255, 255, 3, 1)
-    move_straight(Pose(x=points[0].x, y=points[0].y), 1, 1, 0.1, rate, pub)
-
-    turtle1_set_pen(255, 255, 255, 3, 0)
+    pen_on(set_pen)
     for point in points[1:]:
-        move_straight(Pose(x=point.x, y=point.y), 1, 1, 0.1, rate, pub)
+        move_straight(Pose(x=point.x, y=point.y), 1, 1, 0.1, rate, pub, turtle_name)
 
     rospy.loginfo("We're done!")
     while not rospy.is_shutdown():
         rate.sleep()
+
+def pen_off(pen):
+    pen(255, 255, 255, 3, 1)
+
+def pen_on(pen):
+    # White, width of 3
+    pen(255, 255, 255, 3, 0)
 
 def parse_cmd_args():
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
@@ -71,20 +81,20 @@ def transform_coord(coord):
     # to turtlesim's coordinate system, which goes from (0, 0) to (11, 11)
     return ((coord + 1) / 2) * 11
 
-def pose_callback(pose):
-    global turtle_pose
-    turtle_pose = pose
+def pose_callback(pose, turtle_name):
+    global turtle_poses
+    turtle_poses[turtle_name] = pose
 
-def move_straight(target, move_speed, spin_speed, pos_tolerance, rate, pub):
+def move_straight(target, move_speed, spin_speed, pos_tolerance, rate, pub, turtle_name):
     rospy.loginfo("Going to x: %.2f y: %.2f" % (target.x, target.y))
 
     # We first spin, then move forward
 
-    target_theta = angle_between_points(turtle_pose, target)
+    target_theta = angle_between_points(turtle_poses[turtle_name], target)
 
     rospy.loginfo("Need to aquire theta: %.2f" % target_theta)
-    while not are_angles_equal(turtle_pose.theta, target_theta, deg_to_rad(5)) and not rospy.is_shutdown():
-        spin(spin_speed, is_spin_clockwise(turtle_pose.theta, target_theta), pub)
+    while not are_angles_equal(turtle_poses[turtle_name].theta, target_theta, deg_to_rad(5)) and not rospy.is_shutdown():
+        spin(spin_speed, is_spin_clockwise(turtle_poses[turtle_name].theta, target_theta), pub)
         rate.sleep()
 
     rospy.loginfo("Done spinning!")
@@ -92,16 +102,16 @@ def move_straight(target, move_speed, spin_speed, pos_tolerance, rate, pub):
 
     rospy.loginfo("Moving to the target")
     # We don't move in a straight line because we might need to do small angle corrections
-    move(target, move_speed, spin_speed, pos_tolerance, rate, pub)
+    move(target, move_speed, spin_speed, pos_tolerance, rate, pub, turtle_name)
 
     rospy.loginfo("Reached the target!")
     stop(pub) # Stop moving
 
-def move(target, move_speed, spin_speed, pos_tolerance, rate, pub):
-    while not are_points_equal(turtle_pose, target, pos_tolerance) and not rospy.is_shutdown():
+def move(target, move_speed, spin_speed, pos_tolerance, rate, pub, turtle_name):
+    while not are_points_equal(turtle_poses[turtle_name], target, pos_tolerance) and not rospy.is_shutdown():
         # We move forward, but may need to apply small angle corrections while doing so
-        target_theta = angle_between_points(turtle_pose, target)
-        angle_correction = min_angle_between_angles(turtle_pose.theta, target_theta)
+        target_theta = angle_between_points(turtle_poses[turtle_name], target)
+        angle_correction = min_angle_between_angles(turtle_poses[turtle_name].theta, target_theta)
 
         # We could apply some proportional gain to angle_correction here, but too much
         # will make us zigzag

@@ -31,14 +31,20 @@ def main():
         rate.sleep()
 
 def parse_cmd_args():
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--figure", help = "a figure file")
+    parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    parser.add_argument("--figure", help="a figure file")
+    parser.add_argument("--reverse", help="draw the figure in reverse order", default=False, action="store_true")
     args = vars(parser.parse_args())
 
     if args["figure"]:
-        return parse_figure_file(args["figure"])
-    else:
-        return [[8, 8], [5, 10], [2, 8], [0, 5], [2, 2], [5, 0], [8, 2], [10, 5], [8, 8]]
+        points = parse_figure_file(args["figure"])
+    else: # Use the default figure
+        points = [[8, 8], [5, 10], [2, 8], [0, 5], [2, 2], [5, 0], [8, 2], [10, 5], [8, 8]]
+
+    if args["reverse"]:
+        points.reverse()
+
+    return points
 
 def parse_figure_file(filename):
     with open(filename, "r") as f:

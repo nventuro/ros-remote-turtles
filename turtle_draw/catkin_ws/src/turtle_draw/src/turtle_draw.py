@@ -24,7 +24,7 @@ def main():
     time.sleep(0.5) # We need to sleep for a bit to let the subscriber fetch the current pose at least once
 
     for point in points:
-        move_straight(Pose(x=point[0], y=point[1]), 1, 1, 0.1, rate, pub)
+        move_straight(Pose(x=point.x, y=point.y), 1, 1, 0.1, rate, pub)
 
     rospy.loginfo("We're done!")
     while not rospy.is_shutdown():
@@ -37,12 +37,16 @@ def parse_cmd_args():
     args = vars(parser.parse_args())
 
     if args["figure"]:
-        points = parse_figure_file(args["figure"])
+        coords = parse_figure_file(args["figure"])
     else: # Use the default figure
-        points = [[8, 8], [5, 10], [2, 8], [0, 5], [2, 2], [5, 0], [8, 2], [10, 5], [8, 8]]
+        coords = [[0.75, 0.75], [-0.75, 0.75], [-0.75, -0.75], [0.75, -0.75], [0.75, 0.75]]
 
     if args["reverse"]:
-        points.reverse()
+        coords.reverse()
+
+    points = []
+    for coord in coords:
+        points.append(Point(x=transform_coord(coord[0]), y=transform_coord(coord[1])))
 
     return points
 
@@ -50,10 +54,15 @@ def parse_figure_file(filename):
     with open(filename, "r") as f:
         lines = f.readlines()
 
-    points = []
+    coords = []
     for line in lines:
-        points.append([float(i) for i in line.split(",")])
-    return points
+        coords.append([float(i) for i in line.split(",")])
+    return coords
+
+def transform_coord(coord):
+    # The coords go from (-1, -1) to (1, 1): we need to translate and scale them
+    # to turtlesim's coordinate system, which goes from (0, 0) to (11, 11)
+    return ((coord + 1) / 2) * 11
 
 def pose_callback(pose):
     global turtle_pose

@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <script src="https://code.jquery.com/jquery-3.1.0.min.js"></script>
+    <script src="http://cdn.robotwebtools.org/EventEmitter2/current/eventemitter2.min.js"></script>
+    <script src="./roslib.js"></script>
+    <link rel="stylesheet" type="text/css" href="styles.css">
+
+    <script>
+    // ROS
+
+    // ROS connection
+    var ros = new ROSLIB.Ros();
+
+    // Error event
+    ros.on("error", function(error) {
+        document.getElementById("connecting").style.display = "none";
+        document.getElementById("connected").style.display = "none";
+        document.getElementById("closed").style.display = "none";
+        document.getElementById("error").style.display = "inline";
+        console.log(error);
+    });
+
+    // Connection event
+    ros.on("connection", function() {
+        console.log("Connection made!");
+        document.getElementById("connecting").style.display = "none";
+        document.getElementById("error").style.display = "none";
+        document.getElementById("closed").style.display = "none";
+        document.getElementById("connected").style.display = "inline";
+    });
+
+    // Connection closed event
+    ros.on("close", function() {
+        console.log("Connection closed.");
+        document.getElementById("connecting").style.display = "none";
+        document.getElementById("connected").style.display = "none";
+        document.getElementById("closed").style.display = "inline";
+    });
+
+    function rosConnect() {
+       ros.connect("ws://localhost:9090"); // Create a connection to the rosbridge WebSocket server.
+    }
+
+    // Canvas
+    var canvasWidth = 500;
+    var canvasHeight = 500;
+    var canvasContext;
+
+    var turtlesimXMin = 0;
+    var turtlesimXMax = 11;
+    var turtlesimYMin = 0;
+    var turtlesimYMax = 11;
+
+    function setupCanvas() {
+        var canvas = document.getElementsByTagName("canvas")[0];
+        canvas.setAttribute("width", canvasWidth);
+        canvas.setAttribute("height", canvasHeight);
+        canvasContext = canvas.getContext("2d");
+    }
+
+    function toCanvasCoords(val, coord) {
+        if (coord === "x") {
+            return ((val - turtlesimXMin) / turtlesimXMax) * canvasWidth;
+        } else { // Assume "y"
+            return ((val - turtlesimYMin) / turtlesimYMax) * canvasHeight;
+        }
+    }
+
+    function drawPoint(x, y) {
+        canvasContext.beginPath();
+        canvasContext.arc(x, y, 2, 0, 2 * Math.PI, false); // A full circle
+        canvasContext.fillStyle = "black";
+        canvasContext.fill();
+    }
+
+    function subscribe(turtle_name) {
+        var color_sub = new ROSLIB.Topic({
+            ros : ros,
+            name : "/" + turtle_name + "/color_sensor",
+            messageType : "turtlesim/Color"
+        });
+
+        color_sub.subscribe(function(message) {
+            console.log("[" + color_sub.name + "] R:" + message.r + " G:" + message.g  + " B:"+ message.b);
+        });
+
+        var pose_sub = new ROSLIB.Topic({
+            ros : ros,
+            name : "/" + turtle_name + "/pose",
+            messageType : "turtlesim/Pose"
+        });
+
+        pose_sub.subscribe(function(message) {
+            console.log("[" + pose_sub.name + "] X:" + message.x + " Y:" + message.y  + " TH:"+ message.theta);
+
+            drawPoint(toCanvasCoords(message.x, "x"), toCanvasCoords(message.y, "y"));
+        });
+    }
+
+    function main() {
+        rosConnect();
+        setupCanvas();
+
+        subscribe("turtle2");
+    }
+
+    $(document).ready(function() {
+        main();
+    });
+    </script>
+</head>
+
+<body>
+    <h1>Turtle Draw Viewer</h1>
+    <p>Subscribes to turtlesim's topics and draws whatever turtlesim is drawing.</p>
+    <div id="statusIndicator">
+        <p id="connecting">
+            Connecting to rosbridge...
+        </p>
+        <p id="connected" style="color:#00D600; display:none">
+            Connected
+        </p>
+        <p id="error" style="color:#FF0000; display:none">
+            Error in the backend!
+        </p>
+        <p id="closed" style="display:none">
+            Connection closed
+        </p>
+    </div>
+     <canvas></canvas>
+</body>
+</html>

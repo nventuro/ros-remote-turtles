@@ -48,10 +48,18 @@
     var canvasHeight = 500;
     var canvasContext;
 
-    var turtlesimXMin = 0;
-    var turtlesimXMax = 11;
-    var turtlesimYMin = 0;
-    var turtlesimYMax = 11;
+    // Turtlesim config
+    var ttlesimXMin = 0;
+    var ttlesimXMax = 11;
+    var ttlesimYMin = 0;
+    var ttlesimYMax = 11;
+
+    var ttlesimBackground = {};
+    ttlesimBackground.r = 69;
+    ttlesimBackground.g = 86;
+    ttlesimBackground.b = 255;
+
+    var turtlesData = {};
 
     function setupCanvas() {
         var canvas = document.getElementsByTagName("canvas")[0];
@@ -62,9 +70,9 @@
 
     function toCanvasCoords(val, coord) {
         if (coord === "x") {
-            return ((val - turtlesimXMin) / turtlesimXMax) * canvasWidth;
+            return ((val - ttlesimXMin) / ttlesimXMax) * canvasWidth;
         } else { // Assume "y"
-            return ((val - turtlesimYMin) / turtlesimYMax) * canvasHeight;
+            return ((val - ttlesimYMin) / ttlesimYMax) * canvasHeight;
         }
     }
 
@@ -83,7 +91,10 @@
         });
 
         color_sub.subscribe(function(message) {
-            console.log("[" + color_sub.name + "] R:" + message.r + " G:" + message.g  + " B:"+ message.b);
+            turtlesData[turtle_name] = {};
+            turtlesData[turtle_name].r = message.r;
+            turtlesData[turtle_name].g = message.g;
+            turtlesData[turtle_name].b = message.b;
         });
 
         var pose_sub = new ROSLIB.Topic({
@@ -93,9 +104,9 @@
         });
 
         pose_sub.subscribe(function(message) {
-            console.log("[" + pose_sub.name + "] X:" + message.x + " Y:" + message.y  + " TH:"+ message.theta);
-
-            drawPoint(toCanvasCoords(message.x, "x"), toCanvasCoords(message.y, "y"));
+            if ((turtlesData[turtle_name].r != ttlesimBackground.r) || (turtlesData[turtle_name].g != ttlesimBackground.g) || (turtlesData[turtle_name].b != ttlesimBackground.b)) {
+                drawPoint(toCanvasCoords(message.x, "x"), toCanvasCoords(message.y, "y"));
+            }
         });
     }
 

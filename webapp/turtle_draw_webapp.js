@@ -1,13 +1,5 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="utf-8" />
-    <script src="https://code.jquery.com/jquery-3.1.0.min.js"></script>
-    <script src="http://cdn.robotwebtools.org/EventEmitter2/current/eventemitter2.min.js"></script>
-    <script src="http://cdn.robotwebtools.org/roslibjs/current/roslib.min.js"></script>
-    <link rel="stylesheet" type="text/css" href="styles.css">
+(function() {
 
-    <script>
     // ROS
 
     // ROS connection
@@ -120,26 +112,5 @@
     $(document).ready(function() {
         main();
     });
-    </script>
-</head>
 
-<body>
-    <h1>Turtle Draw Viewer</h1>
-    <p>Subscribes to turtlesim's topics and draws whatever turtlesim is drawing.</p>
-    <div id="statusIndicator">
-        <p id="connecting">
-            Connecting to rosbridge...
-        </p>
-        <p id="connected" style="color:#00D600; display:none">
-            Connected
-        </p>
-        <p id="error" style="color:#FF0000; display:none">
-            Error in the backend!
-        </p>
-        <p id="closed" style="display:none">
-            Connection closed
-        </p>
-    </div>
-     <canvas></canvas>
-</body>
-</html>
+})();

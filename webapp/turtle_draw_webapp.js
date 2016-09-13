@@ -58,6 +58,10 @@
         canvas.setAttribute("width", canvasWidth);
         canvas.setAttribute("height", canvasHeight);
         canvasContext = canvas.getContext("2d");
+
+        $("#clean").click(function() {
+            canvasContext.clearRect(0, 0, canvasWidth, canvasHeight);
+        });
     }
 
     function toCanvasCoords(val, coord) {

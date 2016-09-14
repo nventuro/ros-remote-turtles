@@ -72,53 +72,6 @@
         this.listeners = [];
     }
 
-    function drawTurtle(turtle) {
-        if ((turtle.color.r != ttlesimBackground.r) || (turtle.color.g != ttlesimBackground.g) || (turtle.color.b != ttlesimBackground.b)) {
-            drawPoint(toCanvasCoords(turtle.pos.x, "x"), toCanvasCoords(turtle.pos.y, "y"), turtle.color);
-        }
-    }
-
-    function toCanvasCoords(val, coord) {
-        if (coord === "x") {
-            return ((val - ttlesimXMin) / ttlesimXMax) * canvasWidth;
-        } else { // Assume "y"
-            return ((val - ttlesimYMin) / ttlesimYMax) * canvasHeight;
-        }
-    }
-
-    function drawPoint(x, y, color) {
-        canvasContext.beginPath();
-        canvasContext.arc(x, y, 2, 0, 2 * Math.PI, false); // A full circle
-        canvasContext.fillStyle = "rgb(" + color.r + ", " + color.g + ", " + color.b + ")";;
-        canvasContext.fill();
-    }
-
-    function setupCanvas() {
-        var canvas = document.getElementsByTagName("canvas")[0];
-        canvas.setAttribute("width", canvasWidth);
-        canvas.setAttribute("height", canvasHeight);
-        canvasContext = canvas.getContext("2d");
-
-        clearCanvas();
-        $("#clean").click(clearCanvas);
-    }
-
-    function clearCanvas() {
-        canvasContext.clearRect(0, 0, canvasWidth, canvasHeight);
-        canvasContext.fillStyle = "rgb(" + ttlesimBackground.r + ", " + ttlesimBackground.g + ", " + ttlesimBackground.b + ")";
-        canvasContext.fillRect(0, 0, canvasWidth, canvasHeight);
-    }
-
-    function clearTurtles() {
-        _.each(turtles, function(turtle) {
-            _.each(turtle.listeners, function(listener) {
-                listener.unsubscribe();
-            });
-        });
-
-        turtles = {};
-    }
-
     function updateAliveTurtles() {
         // We find which turtles are alive by requesting the list of ROS topics,
         // and parsing that looking for turtle names
@@ -142,10 +95,24 @@
                 if ((topic.indexOf("/turtle") != -1) && (topic.indexOf("/pose") != -1)) {
                     var turtle_name = "turtle" + parseInt(topic.substring(topic.indexOf("turtle") + "turtle".length));
                     turtles[turtle_name] = new turtle(turtle_name);
+
+                    // We can't subscribe until the new turtle has been created and added to the turtle dictionary,
+                    // because the subscription callback will attempt to access the corresponding entry, and we'd
+                    // have a race condition
                     turtles[turtle_name].listeners = subscribeTurtle(turtle_name);
                 }
             });
         });
+    }
+
+    function clearTurtles() {
+        _.each(turtles, function(turtle) {
+            _.each(turtle.listeners, function(listener) {
+                listener.unsubscribe();
+            });
+        });
+
+        turtles = {};
     }
 
     function subscribeTurtle(turtle_name) {
@@ -180,6 +147,45 @@
         });
 
         return [color_listener, pose_listener];
+    }
+
+    function drawTurtle(turtle) {
+        if ((turtle.color.r != ttlesimBackground.r) || (turtle.color.g != ttlesimBackground.g) || (turtle.color.b != ttlesimBackground.b)) {
+            // We only draw the turtle if it's also drawing (that is, its pen isn't off). Since our background
+            // color matches turtlesim's, though, this doesn't really matter that much.
+            drawPoint(toCanvasCoords(turtle.pos.x, "x"), toCanvasCoords(turtle.pos.y, "y"), turtle.color);
+        }
+    }
+
+    function toCanvasCoords(val, coord) {
+        if (coord === "x") {
+            return ((val - ttlesimXMin) / ttlesimXMax) * canvasWidth;
+        } else { // Assume "y"
+            return ((val - ttlesimYMin) / ttlesimYMax) * canvasHeight;
+        }
+    }
+
+    function drawPoint(x, y, color) {
+        canvasContext.beginPath();
+        canvasContext.arc(x, y, 2, 0, 2 * Math.PI, false); // A full circle
+        canvasContext.fillStyle = "rgb(" + color.r + ", " + color.g + ", " + color.b + ")";;
+        canvasContext.fill();
+    }
+
+    function setupCanvas() {
+        var canvas = document.getElementsByTagName("canvas")[0];
+        canvas.setAttribute("width", canvasWidth);
+        canvas.setAttribute("height", canvasHeight);
+        canvasContext = canvas.getContext("2d");
+
+        clearCanvas();
+        $("#clean").click(clearCanvas);
+    }
+
+    function clearCanvas() {
+        canvasContext.clearRect(0, 0, canvasWidth, canvasHeight);
+        canvasContext.fillStyle = "rgb(" + ttlesimBackground.r + ", " + ttlesimBackground.g + ", " + ttlesimBackground.b + ")";
+        canvasContext.fillRect(0, 0, canvasWidth, canvasHeight);
     }
 
     function main() {

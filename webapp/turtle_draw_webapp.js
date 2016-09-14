@@ -1,4 +1,5 @@
 (function() {
+    var refreshInterval = 10 * 1000; // We resub every 10 seconds
 
     // ROS setup
 
@@ -185,7 +186,10 @@
         rosConnect();
         setupCanvas();
 
-        $("#refresh").click(updateAliveTurtles);
+        updateAliveTurtles();
+        setInterval(function() {
+            updateAliveTurtles();
+        }, refreshInterval);
     }
 
     $(document).ready(function() {

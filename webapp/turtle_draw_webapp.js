@@ -51,49 +51,26 @@
     ttlesimBackground.g = 86;
     ttlesimBackground.b = 255;
 
-    var turtlesData = {};
+    // Turtles
+    var turtles = {};
 
-    function setupCanvas() {
-        var canvas = document.getElementsByTagName("canvas")[0];
-        canvas.setAttribute("width", canvasWidth);
-        canvas.setAttribute("height", canvasHeight);
-        canvasContext = canvas.getContext("2d");
+    function turtle() {
+        // These properties will be set by the topic subscriber's callbacks,
+        // but we need to create them so that they can be accessed later on
+        this.pos = {};
+        this.pos.x = 0;
+        this.pos.y = 0;
 
-        clearCanvas();
-        $("#clean").click(clearCanvas);
-
-        $("#topics").click(getTopics);
+        this.color = {};
+        this.color.r = ttlesimBackground.r;
+        this.color.g = ttlesimBackground.g;
+        this.color.b = ttlesimBackground.b;
     }
 
-    function clearCanvas() {
-        canvasContext.clearRect(0, 0, canvasWidth, canvasHeight);
-        canvasContext.fillStyle = "rgb(" + ttlesimBackground.r + ", " + ttlesimBackground.g + ", " + ttlesimBackground.b + ")";
-        canvasContext.fillRect(0, 0, canvasWidth, canvasHeight);
-    }
-
-    function getTopics() {
-        var topicsClient = new ROSLIB.Service({
-            ros : ros,
-            name : '/rosapi/topics',
-            serviceType : 'rosapi/Topics'
-        });
-
-        var request = new ROSLIB.ServiceRequest();
-
-        topicsClient.callService(request, function(result) {
-            console.log("Getting topics...");
-
-            var turtle_names = [];
-            _.each(result.topics, function(topic) {
-                // We assume the turtle names start with "turtle". We also specifically check
-                // for the "pose" topic, to avoid duplicated entries
-                if ((topic.indexOf("/turtle") != -1) && (topic.indexOf("/pose") != -1)) {
-                    turtle_names.push("turtle" + parseInt(topic.substring(topic.indexOf("turtle") + "turtle".length)));
-                }
-            });
-
-            console.log(turtle_names);
-        });
+    function drawTurtle(turtle) {
+        if ((turtle.color.r != ttlesimBackground.r) || (turtle.color.g != ttlesimBackground.g) || (turtle.color.b != ttlesimBackground.b)) {
+            drawPoint(toCanvasCoords(turtle.pos.x, "x"), toCanvasCoords(turtle.pos.y, "y"), turtle.color);
+        }
     }
 
     function toCanvasCoords(val, coord) {
@@ -111,8 +88,55 @@
         canvasContext.fill();
     }
 
+    function setupCanvas() {
+        var canvas = document.getElementsByTagName("canvas")[0];
+        canvas.setAttribute("width", canvasWidth);
+        canvas.setAttribute("height", canvasHeight);
+        canvasContext = canvas.getContext("2d");
+
+        clearCanvas();
+        $("#clean").click(clearCanvas);
+    }
+
+    function clearCanvas() {
+        canvasContext.clearRect(0, 0, canvasWidth, canvasHeight);
+        canvasContext.fillStyle = "rgb(" + ttlesimBackground.r + ", " + ttlesimBackground.g + ", " + ttlesimBackground.b + ")";
+        canvasContext.fillRect(0, 0, canvasWidth, canvasHeight);
+    }
+
+    function updateAliveTurtles() {
+        // We find which turtles are alive by requesting the list of ROS topics,
+        // and parsing that looking for turtle names
+        var topicsClient = new ROSLIB.Service({
+            ros : ros,
+            name : '/rosapi/topics',
+            serviceType : 'rosapi/Topics'
+        });
+
+        var request = new ROSLIB.ServiceRequest();
+
+        topicsClient.callService(request, function(result) {
+            // We could keep the turtles that are still alive, add the new
+            // ones and delete the dead ones, but we simply clear them all
+            // and then add all of the alive ones.
+
+            turtles = {}
+            _.each(result.topics, function(topic) {
+                // We assume the turtle names are of the form "turtle%u" (where %u is an unsigned integer). While
+                // parsing the list, we also specifically check for the "pose" topic, to avoid duplicated entries
+                if ((topic.indexOf("/turtle") != -1) && (topic.indexOf("/pose") != -1)) {
+                    var turtle_name = "turtle" + parseInt(topic.substring(topic.indexOf("turtle") + "turtle".length));
+                    turtles[turtle_name] = new turtle();
+                    subscribe(turtle_name);
+                }
+            });
+        });
+    }
+
     function subscribe(turtle_name) {
-        // We need to subscribe to both the "color_sensor" and "pose" topics
+        // We need to subscribe to both the "color_sensor" and "pose" topics,
+        // which will update the values of the turtle object associated with
+        // each topic
 
         var color_sub = new ROSLIB.Topic({
             ros : ros,
@@ -121,10 +145,9 @@
         });
 
         color_sub.subscribe(function(message) {
-            turtlesData[turtle_name] = {};
-            turtlesData[turtle_name].r = message.r;
-            turtlesData[turtle_name].g = message.g;
-            turtlesData[turtle_name].b = message.b;
+            turtles[turtle_name].color.r = message.r;
+            turtles[turtle_name].color.g = message.g;
+            turtles[turtle_name].color.b = message.b;
         });
 
         var pose_sub = new ROSLIB.Topic({
@@ -134,9 +157,11 @@
         });
 
         pose_sub.subscribe(function(message) {
-            if ((turtlesData[turtle_name].r != ttlesimBackground.r) || (turtlesData[turtle_name].g != ttlesimBackground.g) || (turtlesData[turtle_name].b != ttlesimBackground.b)) {
-                drawPoint(toCanvasCoords(message.x, "x"), toCanvasCoords(message.y, "y"), turtlesData[turtle_name]);
-            }
+            turtles[turtle_name].pos.x = message.x;
+            turtles[turtle_name].pos.y = message.y;
+
+            // Turtles are redrawn each time their position is udpdated
+            drawTurtle(turtles[turtle_name]);
         });
     }
 
@@ -144,7 +169,7 @@
         rosConnect();
         setupCanvas();
 
-        subscribe("turtle2");
+        $("#refresh").click(updateAliveTurtles);
     }
 
     $(document).ready(function() {

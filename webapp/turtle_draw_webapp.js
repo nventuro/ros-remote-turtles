@@ -54,7 +54,9 @@
     // Turtles
     var turtles = {};
 
-    function turtle() {
+    function turtle(name) {
+        this.name = name;
+
         // These properties will be set by the topic subscriber's callbacks,
         // but we need to create them so that they can be accessed later on
         this.pos = {};
@@ -65,6 +67,8 @@
         this.color.r = ttlesimBackground.r;
         this.color.g = ttlesimBackground.g;
         this.color.b = ttlesimBackground.b;
+
+        this.listeners = [];
     }
 
     function drawTurtle(turtle) {
@@ -104,6 +108,16 @@
         canvasContext.fillRect(0, 0, canvasWidth, canvasHeight);
     }
 
+    function clearTurtles() {
+        _.each(turtles, function(turtle) {
+            _.each(turtle.listeners, function(listener) {
+                listener.unsubscribe();
+            });
+        });
+
+        turtles = {};
+    }
+
     function updateAliveTurtles() {
         // We find which turtles are alive by requesting the list of ROS topics,
         // and parsing that looking for turtle names
@@ -120,49 +134,51 @@
             // ones and delete the dead ones, but we simply clear them all
             // and then add all of the alive ones.
 
-            turtles = {}
+            clearTurtles();
             _.each(result.topics, function(topic) {
                 // We assume the turtle names are of the form "turtle%u" (where %u is an unsigned integer). While
                 // parsing the list, we also specifically check for the "pose" topic, to avoid duplicated entries
                 if ((topic.indexOf("/turtle") != -1) && (topic.indexOf("/pose") != -1)) {
                     var turtle_name = "turtle" + parseInt(topic.substring(topic.indexOf("turtle") + "turtle".length));
-                    turtles[turtle_name] = new turtle();
-                    subscribe(turtle_name);
+                    turtles[turtle_name] = new turtle(turtle_name);
+                    turtles[turtle_name].listeners = subscribeTurtle(turtle_name);
                 }
             });
         });
     }
 
-    function subscribe(turtle_name) {
+    function subscribeTurtle(turtle_name) {
         // We need to subscribe to both the "color_sensor" and "pose" topics,
         // which will update the values of the turtle object associated with
         // each topic
 
-        var color_sub = new ROSLIB.Topic({
+        var color_listener = new ROSLIB.Topic({
             ros : ros,
             name : "/" + turtle_name + "/color_sensor",
             messageType : "turtlesim/Color"
         });
 
-        color_sub.subscribe(function(message) {
+        color_listener.subscribe(function(message) {
             turtles[turtle_name].color.r = message.r;
             turtles[turtle_name].color.g = message.g;
             turtles[turtle_name].color.b = message.b;
         });
 
-        var pose_sub = new ROSLIB.Topic({
+        var pose_listener = new ROSLIB.Topic({
             ros : ros,
             name : "/" + turtle_name + "/pose",
             messageType : "turtlesim/Pose"
         });
 
-        pose_sub.subscribe(function(message) {
+        pose_listener.subscribe(function(message) {
             turtles[turtle_name].pos.x = message.x;
             turtles[turtle_name].pos.y = message.y;
 
             // Turtles are redrawn each time their position is udpdated
             drawTurtle(turtles[turtle_name]);
         });
+
+        return [color_listener, pose_listener];
     }
 
     function main() {

@@ -1,6 +1,6 @@
 (function() {
 
-    // ROS
+    // ROS setup
 
     // ROS connection
     var ros = new ROSLIB.Ros();
@@ -59,8 +59,40 @@
         canvas.setAttribute("height", canvasHeight);
         canvasContext = canvas.getContext("2d");
 
-        $("#clean").click(function() {
-            canvasContext.clearRect(0, 0, canvasWidth, canvasHeight);
+        clearCanvas();
+        $("#clean").click(clearCanvas);
+
+        $("#topics").click(getTopics);
+    }
+
+    function clearCanvas() {
+        canvasContext.clearRect(0, 0, canvasWidth, canvasHeight);
+        canvasContext.fillStyle = "rgb(" + ttlesimBackground.r + ", " + ttlesimBackground.g + ", " + ttlesimBackground.b + ")";
+        canvasContext.fillRect(0, 0, canvasWidth, canvasHeight);
+    }
+
+    function getTopics() {
+        var topicsClient = new ROSLIB.Service({
+            ros : ros,
+            name : '/rosapi/topics',
+            serviceType : 'rosapi/Topics'
+        });
+
+        var request = new ROSLIB.ServiceRequest();
+
+        topicsClient.callService(request, function(result) {
+            console.log("Getting topics...");
+
+            var turtle_names = [];
+            _.each(result.topics, function(topic) {
+                // We assume the turtle names start with "turtle". We also specifically check
+                // for the "pose" topic, to avoid duplicated entries
+                if ((topic.indexOf("/turtle") != -1) && (topic.indexOf("/pose") != -1)) {
+                    turtle_names.push("turtle" + parseInt(topic.substring(topic.indexOf("turtle") + "turtle".length)));
+                }
+            });
+
+            console.log(turtle_names);
         });
     }
 
@@ -72,14 +104,16 @@
         }
     }
 
-    function drawPoint(x, y) {
+    function drawPoint(x, y, color) {
         canvasContext.beginPath();
         canvasContext.arc(x, y, 2, 0, 2 * Math.PI, false); // A full circle
-        canvasContext.fillStyle = "black";
+        canvasContext.fillStyle = "rgb(" + color.r + ", " + color.g + ", " + color.b + ")";;
         canvasContext.fill();
     }
 
     function subscribe(turtle_name) {
+        // We need to subscribe to both the "color_sensor" and "pose" topics
+
         var color_sub = new ROSLIB.Topic({
             ros : ros,
             name : "/" + turtle_name + "/color_sensor",
@@ -101,7 +135,7 @@
 
         pose_sub.subscribe(function(message) {
             if ((turtlesData[turtle_name].r != ttlesimBackground.r) || (turtlesData[turtle_name].g != ttlesimBackground.g) || (turtlesData[turtle_name].b != ttlesimBackground.b)) {
-                drawPoint(toCanvasCoords(message.x, "x"), toCanvasCoords(message.y, "y"));
+                drawPoint(toCanvasCoords(message.x, "x"), toCanvasCoords(message.y, "y"), turtlesData[turtle_name]);
             }
         });
     }

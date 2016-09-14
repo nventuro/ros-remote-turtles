@@ -2,9 +2,13 @@
 <html>
 <head>
     <meta charset="utf-8" />
+    <!-- Dependencies -->
     <script src="https://code.jquery.com/jquery-3.1.0.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/underscore.js/1.8.3/underscore-min.js"></script>
     <script src="http://cdn.robotwebtools.org/EventEmitter2/current/eventemitter2.min.js"></script>
     <script src="http://cdn.robotwebtools.org/roslibjs/current/roslib.min.js"></script>
+
+    <!-- Custom JS -->
     <script src="./turtle_draw_webapp.js"></script>
     <link rel="stylesheet" type="text/css" href="styles.css">
 </head>
@@ -29,6 +33,9 @@
 
     <br>
     <button id="clean">Clean canvas</button>
+
+    <br>
+    <button id="topics">Get topics</button>
 
     <canvas></canvas>
 </body>

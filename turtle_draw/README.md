@@ -14,7 +14,7 @@ Run `compile.sh`. Since the node is written in Python, the compilation step need
 
 ## Usage
 
-For the node to work, both the roscore and the turtlesim node must have been previously started by running `roscore` and `rosrun turtlesim turtlesim_node` (from a terminal where `/opt/ros/kinetic/setup.bash` has been `source`'d). Run `run-turtle-draw.sh` to start the node. To see all available options, run `run-turtle-draw.sh --help`.
+For the node to work, both the roscore and the turtlesim node must have been previously started. This can be achieved by running `../misc/run-roscore.sh` and then `run-turtlesim.sh` (in separate terminals). Run `run-turtle-draw.sh` to start the node. To see all available options, run `run-turtle-draw.sh --help`.
 
 A particularly intersting setup is `./run-turtle-draw.sh --figure figures/star.figure --turtle-army`.
 

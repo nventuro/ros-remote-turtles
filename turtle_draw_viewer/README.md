@@ -6,8 +6,8 @@ A simple webapp that connects to a local turtlesim instance using [rosbridge](ht
 
 ## Installation
 
-Run `install-rosbridge.sh` to install rosbridge for ROS Kinetic Kame. ROS must have been previously installed for this step to work (you can use `turtle_draw/install-ros-kinetic.sh` to install ROS).
+Run `install-rosbridge.sh` to install rosbridge for ROS Kinetic Kame. ROS must have been previously installed for this step to work (you can use `../turtle_draw/install-ros-kinetic.sh` to install ROS).
 
 ## Usage
 
-For the webapp to work, ROS and rosbridge must be running locally. Specifically, the webapp attempts to connect to a WebSocket server at `ws://localhost:9090`. To run it, simply load `index.html` on a web browser.
+For the webapp to work, the roscore and rosbridge must be running locally. Specifically, the webapp attempts to connect to a WebSocket server at `ws://localhost:9090`. This can be achieved by running `../misc/run-roscore.sh` and then `run-rosbridge.sh` (in separate terminals). To run the webapp, simply load `index.html` on a web browser. If rosbridge was not running when the webapp was first loaded, it needs to be reloaded by the browser in order to connect to the WebSocket server.

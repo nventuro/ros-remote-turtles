@@ -1,5 +1,5 @@
 (function() {
-    var refreshInterval = 10 * 1000; // We resub every 10 seconds
+    var refresh_interval = 10 * 1000; // We resub every 10 seconds
 
     // ROS setup
 
@@ -8,28 +8,28 @@
 
     // Error event
     ros.on("error", function(error) {
-        document.getElementById("connecting").style.display = "none";
-        document.getElementById("connected").style.display = "none";
-        document.getElementById("closed").style.display = "none";
-        document.getElementById("error").style.display = "inline";
+        $("#connecting").hide();
+        $("#connected").hide();
+        $("#closed").hide();
+        $("#error").show();
         console.log(error);
     });
 
     // Connection event
     ros.on("connection", function() {
         console.log("Connection made!");
-        document.getElementById("connecting").style.display = "none";
-        document.getElementById("error").style.display = "none";
-        document.getElementById("closed").style.display = "none";
-        document.getElementById("connected").style.display = "inline";
+        $("#connecting").hide();
+        $("#error").hide();
+        $("#closed").hide();
+        $("#connected").show();
     });
 
     // Connection closed event
     ros.on("close", function() {
         console.log("Connection closed.");
-        document.getElementById("connecting").style.display = "none";
-        document.getElementById("connected").style.display = "none";
-        document.getElementById("closed").style.display = "inline";
+        $("#connecting").hide();
+        $("#connected").hide();
+        $("#closed").show();
     });
 
     function rosConnect() {
@@ -37,20 +37,27 @@
     }
 
     // Canvas
-    var canvasWidth = 500;
-    var canvasHeight = 500;
-    var canvasContext;
+    var canvas_cfg = {
+        width : 500,
+        height : 500
+    };
 
     // Turtlesim config
-    var ttlesimXMin = 0;
-    var ttlesimXMax = 11;
-    var ttlesimYMin = 0;
-    var ttlesimYMax = 11;
-
-    var ttlesimBackground = {};
-    ttlesimBackground.r = 69;
-    ttlesimBackground.g = 86;
-    ttlesimBackground.b = 255;
+    var ttlesim_cfg = {
+        x : {
+            min : 0,
+            max : 11
+        },
+        y : {
+            min : 0,
+            max : 11
+        },
+        background : {
+            r : 69,
+            g : 86,
+            b : 255
+        }
+    };
 
     // Turtles
     var turtles = {};
@@ -60,14 +67,16 @@
 
         // These properties will be set by the topic subscriber's callbacks,
         // but we need to create them so that they can be accessed later on
-        this.pos = {};
-        this.pos.x = 0;
-        this.pos.y = 0;
+        this.pos = {
+            x : 0,
+            y : 0
+        }
 
-        this.color = {};
-        this.color.r = ttlesimBackground.r;
-        this.color.g = ttlesimBackground.g;
-        this.color.b = ttlesimBackground.b;
+        this.color = {
+            r : ttlesim_cfg.background.r,
+            g : ttlesim_cfg.background.g,
+            b : ttlesim_cfg.background.b
+        };
 
         this.listeners = [];
     }
@@ -75,7 +84,7 @@
     function updateAliveTurtles() {
         // We find which turtles are alive by requesting the list of ROS topics,
         // and parsing that looking for turtle names
-        var topicsClient = new ROSLIB.Service({
+        var topics_client = new ROSLIB.Service({
             ros : ros,
             name : '/rosapi/topics',
             serviceType : 'rosapi/Topics'
@@ -83,7 +92,7 @@
 
         var request = new ROSLIB.ServiceRequest();
 
-        topicsClient.callService(request, function(result) {
+        topics_client.callService(request, function(result) {
             // We could keep the turtles that are still alive, add the new
             // ones and delete the dead ones, but we simply clear them all
             // and then add all of the alive ones.
@@ -127,9 +136,11 @@
         });
 
         color_listener.subscribe(function(message) {
-            turtles[turtle_name].color.r = message.r;
-            turtles[turtle_name].color.g = message.g;
-            turtles[turtle_name].color.b = message.b;
+            turtles[turtle_name].color = {
+                r : message.r,
+                g : message.g,
+                b : message.b
+            };
         });
 
         var pose_listener = new ROSLIB.Topic({
@@ -139,8 +150,10 @@
         });
 
         pose_listener.subscribe(function(message) {
-            turtles[turtle_name].pos.x = message.x;
-            turtles[turtle_name].pos.y = message.y;
+            turtles[turtle_name].pos = {
+                x : message.x,
+                y : message.y
+            }
 
             // Turtles are redrawn each time their position is udpdated
             drawTurtle(turtles[turtle_name]);
@@ -150,42 +163,43 @@
     }
 
     function drawTurtle(turtle) {
-        if ((turtle.color.r != ttlesimBackground.r) || (turtle.color.g != ttlesimBackground.g) || (turtle.color.b != ttlesimBackground.b)) {
+        if ((turtle.color.r != ttlesim_cfg.background.r) || (turtle.color.g != ttlesim_cfg.background.g) || (turtle.color.b != ttlesim_cfg.background.b)) {
             // We only draw the turtle if it's also drawing (that is, its pen isn't off). Since our background
             // color matches turtlesim's, though, this doesn't really matter that much.
-            drawPoint(toCanvasCoords(turtle.pos.x, "x"), toCanvasCoords(turtle.pos.y, "y"), turtle.color);
+            drawPoint(toCanvasXCoords(turtle.pos.x), toCanvasYCoords(turtle.pos.y), turtle.color);
         }
     }
 
-    function toCanvasCoords(val, coord) {
-        if (coord === "x") {
-            return ((val - ttlesimXMin) / ttlesimXMax) * canvasWidth;
-        } else { // Assume "y"
-            return ((val - ttlesimYMin) / ttlesimYMax) * canvasHeight;
-        }
+    function toCanvasXCoords(val) {
+        return ((val - ttlesim_cfg.x.min) / ttlesim_cfg.x.max) * canvas_cfg.width;
+    }
+
+    function toCanvasYCoords(val) {
+        return ((val - ttlesim_cfg.y.min) / ttlesim_cfg.y.max) * canvas_cfg.height;
     }
 
     function drawPoint(x, y, color) {
-        canvasContext.beginPath();
-        canvasContext.arc(x, y, 2, 0, 2 * Math.PI, false); // A full circle
-        canvasContext.fillStyle = "rgb(" + color.r + ", " + color.g + ", " + color.b + ")";;
-        canvasContext.fill();
+        canvas_cfg.context.beginPath();
+        canvas_cfg.context.arc(x, y, 2, 0, 2 * Math.PI, false); // A full circle
+        canvas_cfg.context.fillStyle = "rgb(" + color.r + ", " + color.g + ", " + color.b + ")";;
+        canvas_cfg.context.fill();
     }
 
     function setupCanvas() {
         var canvas = document.getElementsByTagName("canvas")[0];
-        canvas.setAttribute("width", canvasWidth);
-        canvas.setAttribute("height", canvasHeight);
-        canvasContext = canvas.getContext("2d");
+        canvas.setAttribute("width", canvas_cfg.width);
+        canvas.setAttribute("height", canvas_cfg.width);
+
+        canvas_cfg.context = canvas.getContext("2d");
 
         clearCanvas();
         $("#clean").click(clearCanvas);
     }
 
     function clearCanvas() {
-        canvasContext.clearRect(0, 0, canvasWidth, canvasHeight);
-        canvasContext.fillStyle = "rgb(" + ttlesimBackground.r + ", " + ttlesimBackground.g + ", " + ttlesimBackground.b + ")";
-        canvasContext.fillRect(0, 0, canvasWidth, canvasHeight);
+        canvas_cfg.context.clearRect(0, 0, canvas_cfg.width, canvas_cfg.height);
+        canvas_cfg.context.fillStyle = "rgb(" + ttlesim_cfg.background.r + ", " + ttlesim_cfg.background.g + ", " + ttlesim_cfg.background.b + ")";
+        canvas_cfg.context.fillRect(0, 0, canvas_cfg.width, canvas_cfg.height);
     }
 
     function main() {
@@ -195,7 +209,7 @@
         updateAliveTurtles();
         setInterval(function() {
             updateAliveTurtles();
-        }, refreshInterval);
+        }, refresh_interval);
     }
 
     $(document).ready(function() {

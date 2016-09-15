@@ -181,7 +181,7 @@
     }
 
     function toCanvasYCoords(val) {
-        return ((val - ttlesim_cfg.y.min) / ttlesim_cfg.y.max) * canvas_cfg.height;
+        return (1 - ((val - ttlesim_cfg.y.min) / ttlesim_cfg.y.max)) * canvas_cfg.height; // The y axis is inverted between turtlesim and the canvas
     }
 
     function drawPoint(x, y, color) {

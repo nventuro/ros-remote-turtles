@@ -15,7 +15,6 @@
  */
 
 dependencies {
-  compile 'org.ros.rosjava_core:rosjava_tutorial_pubsub:[0.2,0.3)'
   compile project(':android_10')
 }
 

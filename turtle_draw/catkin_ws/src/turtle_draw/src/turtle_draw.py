@@ -2,6 +2,7 @@
 
 import rospy
 from geometry_msgs.msg import Twist, Point
+from std_msgs.msg import Bool
 from std_srvs.srv import Empty
 from turtlesim.msg import Pose
 from turtlesim.srv import Kill, Spawn, SetPen
@@ -16,7 +17,11 @@ import threading
 # Each turtl's position - this is set by the subsriber callbacks
 turtle_poses = {}
 
+paused = False
+
 def main():
+    points_array, remote = parse_cmd_args()
+
     rospy.init_node("turtle_draw")
 
     # Reset turtlesim
@@ -25,7 +30,9 @@ def main():
     # Kill the original turtle - we will later create new turtles for each thread
     rospy.ServiceProxy("/kill", Kill)("turtle1")
 
-    points_array = parse_cmd_args()
+    if remote:
+        rospy.Subscriber("/turtle_draw/run", Bool, run_callback)
+        pause()
 
     threads = []
     for points in points_array:
@@ -43,6 +50,27 @@ def main():
         t.join()
 
     rospy.loginfo("We're done!")
+
+def run_callback(run):
+    # If the new message matches our current state, do nothing
+    if run.data and paused:
+        unpause()
+    elif not run.data and not paused:
+        pause()
+
+def pause():
+    rospy.loginfo("Pausing")
+    global paused
+    paused = True
+
+def unpause():
+    rospy.loginfo("Unpausing")
+    global paused
+    paused = False
+
+def pause_if_required():
+    while paused:
+        time.sleep(0)
 
 def draw_figure(points, turtle_name):
     rate = rospy.Rate(10) # 10 Hz
@@ -73,9 +101,10 @@ def pen_on(pen):
     pen(255, 255, 255, 3, 0)
 
 def parse_cmd_args():
-    parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    parser = argparse.ArgumentParser()
     parser.add_argument("--figure", help="a figure file")
     parser.add_argument("--reverse", help="draw the figure in reverse order", default=False, action="store_true")
+    parser.add_argument("--remote", help="listen to /turtle_draw/run for run/pause messages", default=False, action="store_true")
 
     multi_opts = parser.add_mutually_exclusive_group()
     multi_opts.add_argument("--dual-turtles", help="draw the figure using two turtles", action="store_true")
@@ -108,7 +137,7 @@ def parse_cmd_args():
     else: # A single turtle draws the whol efigure
         points_array = [points]
 
-    return points_array
+    return points_array, args["remote"]
 
 def parse_figure_file(filename):
     with open(filename, "r") as f:
@@ -137,6 +166,8 @@ def move_straight(target, move_speed, spin_speed, pos_tolerance, rate, pub, turt
 
     rospy.loginfo("[%s] Need to aquire theta: %.2f" % (turtle_name, target_theta))
     while not are_angles_equal(turtle_poses[turtle_name].theta, target_theta, deg_to_rad(5)) and not rospy.is_shutdown():
+        pause_if_required()
+
         spin(spin_speed, is_spin_clockwise(turtle_poses[turtle_name].theta, target_theta), pub)
         rate.sleep()
 
@@ -152,6 +183,8 @@ def move_straight(target, move_speed, spin_speed, pos_tolerance, rate, pub, turt
 
 def move(target, move_speed, spin_speed, pos_tolerance, rate, pub, turtle_name):
     while not are_points_equal(turtle_poses[turtle_name], target, pos_tolerance) and not rospy.is_shutdown():
+        pause_if_required()
+
         # We move forward, but may need to apply small angle corrections while doing so
         target_theta = angle_between_points(turtle_poses[turtle_name], target)
         angle_correction = min_angle_between_angles(turtle_poses[turtle_name].theta, target_theta)

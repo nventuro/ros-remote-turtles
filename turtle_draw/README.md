@@ -20,3 +20,6 @@ A particularly intersting setup is `./run-turtle-draw.sh --figure figures/star.f
 
 ### Figure files
 Figures are specified in plaintext files, where each line is an (x, y) pair (comma-separated), where the range for both the x and y coordinates is [-1, 1]. The turtle will travel from point to point in the same order they are in the file. Some examples can be found in the `figures` directory. Not much error checking is performed on the figure files, so take care to make sure the contents are correct.
+
+### Remote controls
+If the `--remote` flag is passed to `./run-turtle-draw.sh`, the node will subscribe to the `/turtle_draw/run` topic, where run/pause commands (of type `std_msgs/Bool`) can be sent to it. The `pause.sh` and `unpause.sh` scripts can be used to perform these actions.

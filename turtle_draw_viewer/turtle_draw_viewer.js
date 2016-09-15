@@ -1,5 +1,5 @@
 (function() {
-    var refresh_interval = 10 * 1000; // We resub every 10 seconds
+    var refresh_interval = 1 * 1000; // We check for new turtles every second
 
     // ROS setup
 
@@ -93,16 +93,32 @@
         var request = new ROSLIB.ServiceRequest();
 
         topics_client.callService(request, function(result) {
-            // We could keep the turtles that are still alive, add the new
-            // ones and delete the dead ones, but we simply clear them all
-            // and then add all of the alive ones.
+            // We keep the turtles that are still alive to avoid unsubscribing
+            // and then subscribing again, and delete all of the dead turtles
 
-            clearTurtles();
+            var current_turtle_names = [];
             _.each(result.topics, function(topic) {
-                // We assume the turtle names are of the form "turtle%u" (where %u is an unsigned integer). While
-                // parsing the list, we also specifically check for the "pose" topic, to avoid duplicated entries
+                // We assume the turtle names start with "turtle". While parsing the list, we also specifically
+                // check for the "pose" topic, to avoid duplicated entries
                 if ((topic.indexOf("/turtle") != -1) && (topic.indexOf("/pose") != -1)) {
-                    var turtle_name = "turtle" + parseInt(topic.substring(topic.indexOf("turtle") + "turtle".length));
+                    current_turtle_names.push(topic.substring(topic.indexOf("turtle"), topic.indexOf("/pose")));
+                }
+            });
+
+            // Delete dead turtles
+            _.each(turtles, function(turtle) {
+                if ($.inArray(turtle.name, current_turtle_names) === (-1)) {
+                    _.each(turtle.listeners, function(listener) {
+                        listener.unsubscribe();
+                    });
+                    turtles[turtle.name] = null;
+                }
+            })
+
+            _.each(current_turtle_names, function(turtle_name) {
+                if (!(turtle_name in turtles)) {
+                    // Add the newly created turtle
+
                     turtles[turtle_name] = new turtle(turtle_name);
 
                     // We can't subscribe until the new turtle has been created and added to the turtle dictionary,
@@ -112,16 +128,6 @@
                 }
             });
         });
-    }
-
-    function clearTurtles() {
-        _.each(turtles, function(turtle) {
-            _.each(turtle.listeners, function(listener) {
-                listener.unsubscribe();
-            });
-        });
-
-        turtles = {};
     }
 
     function subscribeTurtle(turtle_name) {

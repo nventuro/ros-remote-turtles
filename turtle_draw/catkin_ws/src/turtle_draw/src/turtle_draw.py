@@ -68,9 +68,12 @@ def unpause():
     global paused
     paused = False
 
-def pause_if_required():
-    while paused:
-        time.sleep(0)
+def pause_if_required(pub):
+    if paused:
+        stop(pub)
+
+        while paused:
+            time.sleep(0)
 
 def draw_figure(points, turtle_name):
     rate = rospy.Rate(10) # 10 Hz
@@ -166,7 +169,7 @@ def move_straight(target, move_speed, spin_speed, pos_tolerance, rate, pub, turt
 
     rospy.loginfo("[%s] Need to aquire theta: %.2f" % (turtle_name, target_theta))
     while not are_angles_equal(turtle_poses[turtle_name].theta, target_theta, deg_to_rad(5)) and not rospy.is_shutdown():
-        pause_if_required()
+        pause_if_required(pub)
 
         spin(spin_speed, is_spin_clockwise(turtle_poses[turtle_name].theta, target_theta), pub)
         rate.sleep()
@@ -183,7 +186,7 @@ def move_straight(target, move_speed, spin_speed, pos_tolerance, rate, pub, turt
 
 def move(target, move_speed, spin_speed, pos_tolerance, rate, pub, turtle_name):
     while not are_points_equal(turtle_poses[turtle_name], target, pos_tolerance) and not rospy.is_shutdown():
-        pause_if_required()
+        pause_if_required(pub)
 
         # We move forward, but may need to apply small angle corrections while doing so
         target_theta = angle_between_points(turtle_poses[turtle_name], target)

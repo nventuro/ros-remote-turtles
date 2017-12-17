@@ -3,15 +3,6 @@
 import math
 import unittest
 
-## dependencies = {
-##     "step", # rospy.Rate
-##     "pen", # set_pen
-##     "log", # rospy.loginfo (partial con tortuga name)
-##     "curr_pose", # levantar de lo que nos subscribimos (partial con tortuga name)
-##     "abort", # rospy.is_shutdown()
-##     "attempt-pause", # pause_if_required
-## }
-
 class Pose():
     def __init__(self, x, y, theta=0):
         self.x = x
@@ -24,7 +15,15 @@ class Pose():
     def __repr__(self):
         return str(self)
 
-def draw_figure(points, deps):
+## Rquired dependencies (dictionary with functions):
+##   log(s): Prints logging information
+##   pause(): Returns true while simulation progress should be paused
+##   abort(): Returns true when the simulation should stop
+##   step(): Idles until the simulation is ready to continue (executed at the end of each step)
+##   curr_pose(): Returns the current pose
+##   move(linear_speed, angular_speed): Moves the object forward and makes it spin
+##   pen(on): Turns the pen on or off
+def draw(points, deps):
     # We need to turn of the pen while we reach the first point
     deps["pen"](False)
     _move_straight(Pose(x=points[0].x, y=points[0].y), 1, 1, 0.1, deps)

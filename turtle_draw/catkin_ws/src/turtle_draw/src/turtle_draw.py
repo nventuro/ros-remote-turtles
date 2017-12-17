@@ -57,7 +57,7 @@ def main():
 
         dependencies["pen"](True)
 
-        t = threading.Thread(target=draw_figure.draw_figure, args = (points, dependencies))
+        t = threading.Thread(target=draw_figure.draw, args = (points, dependencies))
         threads.append(t)
 
     # Launch all threads

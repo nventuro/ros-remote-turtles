@@ -27,16 +27,16 @@ class Pose():
 def draw_figure(points, deps):
     # We need to turn of the pen while we reach the first point
     deps["pen"](False)
-    move_straight(Pose(x=points[0].x, y=points[0].y), 1, 1, 0.1, deps)
+    _move_straight(Pose(x=points[0].x, y=points[0].y), 1, 1, 0.1, deps)
 
     # And then turn it back on to draw the different segments
     deps["pen"](True)
     for point in points[1:]:
-        move_straight(Pose(x=point.x, y=point.y), 1, 1, 0.1, deps)
+        _move_straight(Pose(x=point.x, y=point.y), 1, 1, 0.1, deps)
 
     deps["log"]("Done!")
 
-def move_straight(target, move_speed, spin_speed, pos_tolerance, pub, deps):
+def _move_straight(target, move_speed, spin_speed, pos_tolerance, deps):
     deps["log"]("Going to x: %.2f y: %.2f" % (target.x, target.y))
 
     # We first spin, then move forward
@@ -44,24 +44,24 @@ def move_straight(target, move_speed, spin_speed, pos_tolerance, pub, deps):
     deps["log"]("Need to aquire theta: %.2f" % target_theta)
 
     while not _are_angles_equal(deps["curr_pose"]().theta, target_theta, _deg_to_rad(5)) and not deps["abort"]():
-        deps["attempt-pause"]()
+        _pause_if_required(deps)
 
-        spin(spin_speed, _is_spin_clockwise(deps["curr_pose"]().theta, target_theta), deps)
+        _spin(spin_speed, _is_spin_clockwise(deps["curr_pose"]().theta, target_theta), deps)
         deps["step"]()
 
     deps["log"]("Done spinning!")
-    stop(deps) # Stop spinning
+    _stop(deps) # Stop spinning
 
     deps["log"]("Moving to the target")
     # We don't move in a straight line because we might need to do small angle corrections
-    move(target, move_speed, spin_speed, pos_tolerance, deps)
+    _move(target, move_speed, spin_speed, pos_tolerance, deps)
 
     deps["log"]("Reached the target!")
-    stop(deps) # Stop moving
+    _stop(deps) # Stop moving
 
-def move(target, move_speed, spin_speed, pos_tolerance, pub, deps):
+def _move(target, move_speed, spin_speed, pos_tolerance, deps):
     while not _are_points_equal(deps["curr_pose"](), target, pos_tolerance) and not deps["abort"]():
-        deps["attempt-pause"]()
+        _pause_if_required(deps)
 
         # We move forward, but may need to apply small angle corrections while doing so
         target_theta = _angle_between_points(deps["curr_pose"](), target)
@@ -74,11 +74,17 @@ def move(target, move_speed, spin_speed, pos_tolerance, pub, deps):
 
         deps["step"]()
 
-def spin(speed, clockwise, deps):
+def _spin(speed, clockwise, deps):
     deps["move"](0, speed * (-1 if clockwise else 1))
 
-def stop(deps):
+def _stop(deps):
     deps["move"](0, 0)
+
+def _pause_if_required(deps):
+    if deps["pause"]():
+        _stop(deps) # Halt
+        while deps["pause"](): # Idle loop until the pause ends
+            deps["step"]()
 
 def _angle_between_points(point_a, point_b):
     # math.atan2 works correctly on all 4 quadrants, and we don't need to

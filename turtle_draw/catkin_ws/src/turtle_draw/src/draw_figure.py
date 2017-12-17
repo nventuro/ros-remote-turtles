@@ -1,77 +1,84 @@
 #!/usr/bin/env python
 
 import math
-from functools import partial
-import time
-
 import unittest
 
-# Each turtl's position - this is set by the subsriber callbacks
-turtle_poses = {}
+## dependencies = {
+##     "step", # rospy.Rate
+##     "pen", # set_pen
+##     "log", # rospy.loginfo (partial con tortuga name)
+##     "curr_pose", # levantar de lo que nos subscribimos (partial con tortuga name)
+##     "abort", # rospy.is_shutdown()
+##     "attempt-pause", # pause_if_required
+## }
 
-def draw_figure(points, turtle_name):
-    rate = rospy.Rate(10) # 10 Hz
+class Pose():
+    def __init__(self, x, y, theta=0):
+        self.x = x
+        self.y = y
+        self.theta = theta
 
-    pub = rospy.Publisher("/%s/cmd_vel" % turtle_name, Twist, queue_size=10)
+    def __str__(self):
+        return "Pose (x: %.2f y: %.2f theta: %.2f)" % (self.x, self.y, self.theta)
 
-    while turtle_name not in turtle_poses: # We need to sleep for a bit to let the subscriber fetch the current pose at least once
-        time.sleep(0)
+    def __repr__(self):
+        return str(self)
 
+def draw_figure(points, deps):
     # We need to turn of the pen while we reach the first point
-    pen_off(set_pen)
-    move_straight(Pose(x=points[0].x, y=points[0].y), 1, 1, 0.1, rate, pub, turtle_name)
+    deps["pen"](False)
+    move_straight(Pose(x=points[0].x, y=points[0].y), 1, 1, 0.1, deps)
 
     # And then turn it back on to draw the different segments
-    pen_on(set_pen)
+    deps["pen"](True)
     for point in points[1:]:
-        move_straight(Pose(x=point.x, y=point.y), 1, 1, 0.1, rate, pub, turtle_name)
+        move_straight(Pose(x=point.x, y=point.y), 1, 1, 0.1, deps)
 
-    rospy.loginfo("Turtle \"%s\" is done!" % turtle_name)
+    deps["log"]("Done!")
 
-def move_straight(target, move_speed, spin_speed, pos_tolerance, rate, pub, turtle_name):
-    rospy.loginfo("[%s] Going to x: %.2f y: %.2f" % (turtle_name, target.x, target.y))
+def move_straight(target, move_speed, spin_speed, pos_tolerance, pub, deps):
+    deps["log"]("Going to x: %.2f y: %.2f" % (target.x, target.y))
 
     # We first spin, then move forward
+    target_theta = _angle_between_points(deps["curr_pose"](), target)
+    deps["log"]("Need to aquire theta: %.2f" % target_theta)
 
-    target_theta = _angle_between_points(turtle_poses[turtle_name], target)
+    while not _are_angles_equal(deps["curr_pose"]().theta, target_theta, _deg_to_rad(5)) and not deps["abort"]():
+        deps["attempt-pause"]()
 
-    rospy.loginfo("[%s] Need to aquire theta: %.2f" % (turtle_name, target_theta))
-    while not _are_angles_equal(turtle_poses[turtle_name].theta, target_theta, _deg_to_rad(5)) and not rospy.is_shutdown():
-        pause_if_required(pub)
+        spin(spin_speed, _is_spin_clockwise(deps["curr_pose"]().theta, target_theta), deps)
+        deps["step"]()
 
-        spin(spin_speed, _is_spin_clockwise(turtle_poses[turtle_name].theta, target_theta), pub)
-        rate.sleep()
+    deps["log"]("Done spinning!")
+    stop(deps) # Stop spinning
 
-    rospy.loginfo("[%s] Done spinning!" % turtle_name)
-    stop(pub) # Stop spinning
-
-    rospy.loginfo("[%s] Moving to the target" % turtle_name)
+    deps["log"]("Moving to the target")
     # We don't move in a straight line because we might need to do small angle corrections
-    move(target, move_speed, spin_speed, pos_tolerance, rate, pub, turtle_name)
+    move(target, move_speed, spin_speed, pos_tolerance, deps)
 
-    rospy.loginfo("[%s] Reached the target!" % turtle_name)
-    stop(pub) # Stop moving
+    deps["log"]("Reached the target!")
+    stop(deps) # Stop moving
 
-def move(target, move_speed, spin_speed, pos_tolerance, rate, pub, turtle_name):
-    while not _are_points_equal(turtle_poses[turtle_name], target, pos_tolerance) and not rospy.is_shutdown():
-        pause_if_required(pub)
+def move(target, move_speed, spin_speed, pos_tolerance, pub, deps):
+    while not _are_points_equal(deps["curr_pose"](), target, pos_tolerance) and not deps["abort"]():
+        deps["attempt-pause"]()
 
         # We move forward, but may need to apply small angle corrections while doing so
-        target_theta = _angle_between_points(turtle_poses[turtle_name], target)
-        angle_correction = _min_angle_between_angles(turtle_poses[turtle_name].theta, target_theta)
+        target_theta = _angle_between_points(deps["curr_pose"](), target)
+        angle_correction = _min_angle_between_angles(deps["curr_pose"]().theta, target_theta)
 
         # We could apply some proportional gain to angle_correction here, but too much
         # will make us zigzag
-        target_spin_speed = _clamp(angle_correction, -spin_speed, spin_speed)
+        correction_spin_speed = _clamp(angle_correction, -spin_speed, spin_speed)
+        deps["move"](move_speed, correction_spin_speed)
 
-        pub.publish(Twist(linear=Point(move_speed, 0, 0), angular=Point(0, 0, target_spin_speed)))
-        rate.sleep()
+        deps["step"]()
 
-def spin(speed, clockwise, pub):
-    pub.publish(Twist(linear=Point(0, 0, 0), angular=Point(0, 0, speed * (-1 if clockwise else 1))))
+def spin(speed, clockwise, deps):
+    deps["move"](0, speed * (-1 if clockwise else 1))
 
-def stop(pub):
-    pub.publish(Twist(linear=Point(0, 0, 0), angular=Point(0, 0, 0)))
+def stop(deps):
+    deps["move"](0, 0)
 
 def _angle_between_points(point_a, point_b):
     # math.atan2 works correctly on all 4 quadrants, and we don't need to

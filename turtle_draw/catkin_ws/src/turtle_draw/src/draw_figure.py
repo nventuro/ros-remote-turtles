@@ -110,7 +110,7 @@ def _are_points_equal(point_a, point_b, tolerance):
     return math.sqrt((point_a.x - point_b.x) ** 2 + (point_a.y - point_b.y) ** 2) < tolerance
 
 def _are_angles_equal(angle_a, angle_b, tolerance):
-    return abs(_normalize_rad(angle_a) - _normalize_rad(angle_b)) < tolerance
+    return (abs(angle_a - angle_b) < tolerance) or (abs(_normalize_rad(angle_a) - _normalize_rad(angle_b)) < tolerance)
 
 def _normalize_rad(rad):
     # Normalization to (-pi, pi]

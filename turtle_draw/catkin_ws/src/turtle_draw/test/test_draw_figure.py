@@ -5,6 +5,42 @@ from src import draw_figure
 
 import math
 
+
+class TestHelperFunctions(unittest.TestCase):
+    def test_angle_between_points(self):
+        pass
+
+    def test_min_angle_between_angles(self):
+        pass
+
+    def test_is_spin_clockwise(self):
+        pass
+
+    def test_are_points_equal(self):
+        pass
+
+    def test_are_angles_equal(self):
+        pass
+
+class TestAreAnglesEqual(unittest.TestCase):
+    tolerance = math.pi / 100
+
+    # Normal usage
+    def test_equal_angles(self):
+        self.assertTrue(draw_figure._are_angles_equal(math.pi, math.pi, self.tolerance))
+    def test_different_angles(self):
+        self.assertFalse(draw_figure._are_angles_equal(0, math.pi, self.tolerance))
+    def test_equal_normalized_angles(self):
+        self.assertTrue(draw_figure._are_angles_equal(math.pi, -math.pi, self.tolerance))
+
+    # Edge cases
+    def test_barely_equal_angles(self):
+        self.assertTrue(draw_figure._are_angles_equal(math.pi/2, math.pi/2 + 0.9 * self.tolerance, self.tolerance))
+    def test_barely_different_angles(self):
+        self.assertFalse(draw_figure._are_angles_equal(math.pi/2, math.pi/2 + 1.1 * self.tolerance, self.tolerance))
+    def test_barely_equal_angles_when_not_normalized(self):
+        self.assertTrue(draw_figure._are_angles_equal(math.pi, math.pi + 0.9 * self.tolerance, self.tolerance))
+
 class TestNormalizeRad(unittest.TestCase):
     # Normal usage
     def test_no_offset(self):

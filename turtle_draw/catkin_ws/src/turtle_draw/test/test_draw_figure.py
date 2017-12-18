@@ -2,25 +2,81 @@
 
 import unittest
 from src import draw_figure
+from src.draw_figure import Pose
 
 import math
 
+class TestAngleBetweenPoints(unittest.TestCase):
+    # Normal usage
+    def test_positive_angle(self):
+       self.assertAlmostEqual(draw_figure._angle_between_points(Pose(0, 0), Pose(0, 1)), math.pi / 2)
+    def test_negative_angle(self):
+       self.assertAlmostEqual(draw_figure._angle_between_points(Pose(0, 0), Pose(0, -1)), -math.pi / 2)
 
-class TestHelperFunctions(unittest.TestCase):
-    def test_angle_between_points(self):
-        pass
+    # Edge cases
+    def test_zero_angle(self):
+        self.assertAlmostEqual(draw_figure._angle_between_points(Pose(0, 0), Pose(1, 0)), 0)
+    def test_max_angle(self):
+        self.assertAlmostEqual(draw_figure._angle_between_points(Pose(0, 0), Pose(-1, 0)), math.pi)
 
-    def test_min_angle_between_angles(self):
-        pass
+class TestMinAngleBetweenAngles(unittest.TestCase):
+    # Normal usage
+    def test_positive_first_quadrant(self):
+        self.assertAlmostEqual(draw_figure._min_angle_between_angles(math.pi * 0.125, math.pi * 0.25), math.pi * 0.125)
+    def test_negative_first_quadrant(self):
+        self.assertAlmostEqual(draw_figure._min_angle_between_angles(math.pi * 0.25, math.pi * 0.125), -math.pi * 0.125)
+    def test_same_angle(self):
+        self.assertAlmostEqual(draw_figure._min_angle_between_angles(math.pi/2, math.pi/2), 0)
+    def test_same_normalized_angle_clockwise(self):
+        self.assertAlmostEqual(draw_figure._min_angle_between_angles(0, -math.pi * 2), 0)
+    def test_same_normalized_angle_counterclockwise(self):
+        self.assertAlmostEqual(draw_figure._min_angle_between_angles(0, math.pi * 2), 0)
 
-    def test_is_spin_clockwise(self):
-        pass
+    # Edge cases
+    def test_positive_crossing_zero(self):
+        self.assertAlmostEqual(draw_figure._min_angle_between_angles(-math.pi/4, math.pi/4), math.pi/2)
+    def test_negative_crossing_zero(self):
+        self.assertAlmostEqual(draw_figure._min_angle_between_angles(math.pi/4, -math.pi/4), -math.pi/2)
+    def test_positive_crossing_pi(self):
+        self.assertAlmostEqual(draw_figure._min_angle_between_angles(math.pi * 0.875, math.pi * 1.125), math.pi * 0.25)
+    def test_negative_crossing_pi(self):
+        self.assertAlmostEqual(draw_figure._min_angle_between_angles(math.pi * 1.125, math.pi * 0.875), -math.pi * 0.25)
+    def test_positive_crossing_2_pi(self):
+        self.assertAlmostEqual(draw_figure._min_angle_between_angles(math.pi * 1.875, math.pi * 0.125), math.pi * 0.25)
+    def test_negative_crossing_2_pi(self):
+        self.assertAlmostEqual(draw_figure._min_angle_between_angles(math.pi * 0.125, math.pi * 1.875), -math.pi * 0.25)
 
-    def test_are_points_equal(self):
-        pass
+class TestIsSpinClockwise(unittest.TestCase):
+    # Normal usage
+    def test_clockwise_spin(self):
+        self.assertTrue(draw_figure._is_spin_clockwise(math.pi/2, 0))
+    def test_counterclockwise_spin(self):
+        self.assertFalse(draw_figure._is_spin_clockwise(0, math.pi/2))
 
-    def test_are_angles_equal(self):
-        pass
+    # Edge cases
+    def test_clockwise_crossing_zero(self):
+        self.assertTrue(draw_figure._is_spin_clockwise(math.pi/4, -math.pi/4))
+    def test_counter_clockwise_crossing_zero(self):
+        self.assertFalse(draw_figure._is_spin_clockwise(-math.pi/4, math.pi/4))
+    def test_clockwise_crossing_pi(self):
+        self.assertTrue(draw_figure._is_spin_clockwise(math.pi * 1.25, math.pi * 0.75))
+    def test_counter_clockwise_crossing_pi(self):
+        self.assertFalse(draw_figure._is_spin_clockwise(math.pi * 0.75, math.pi * 1.25))
+
+class TestArePointsEqual(unittest.TestCase):
+    tolerance = 0.01
+
+    # Normal usage
+    def test_equal_points(self):
+        self.assertTrue(draw_figure._are_points_equal(Pose(0, 0), Pose(0, 0), self.tolerance))
+    def test_different_points(self):
+        self.assertFalse(draw_figure._are_points_equal(Pose(0, 0), Pose(1, 1), self.tolerance))
+
+    # Edge cases
+    def test_barely_equal_points(self):
+        self.assertTrue(draw_figure._are_points_equal(Pose(0, 0), Pose(self.tolerance / 2, self.tolerance / 2), self.tolerance))
+    def test_barely_different_points(self):
+        self.assertFalse(draw_figure._are_points_equal(Pose(0, 0), Pose(self.tolerance, self.tolerance), self.tolerance))
 
 class TestAreAnglesEqual(unittest.TestCase):
     tolerance = math.pi / 100

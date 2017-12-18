@@ -12,6 +12,9 @@ Run `install-ros-kinetic.sh` to install ROS Kinetic Kame. Alternatively, you cou
 
 Run `compile.sh`. Since the node is written in Python, the compilation step needs only be executed once, so that the ROS package can be built.
 
+## Testing
+To test the node's underlying logic (with the ROS dependencies removed), run `./test_turtle_draw.sh`.
+
 ## Usage
 
 For the node to work, both the roscore and the turtlesim node must have been previously started. This can be achieved by running `../misc/run-roscore.sh` and then `run-turtlesim.sh` (in separate terminals). Run `run-turtle-draw.sh` to start the node. To see all available options, run `run-turtle-draw.sh --help`.

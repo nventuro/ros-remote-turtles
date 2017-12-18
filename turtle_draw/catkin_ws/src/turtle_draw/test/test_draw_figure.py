@@ -233,6 +233,15 @@ class TestGetPointsInLine(unittest.TestCase):
     def test_points_in_diagonal_line(self):
         self._test_points_in_line(Pose(0, 0), Pose(1, 1))
 
+    # Extra behavior
+    def test_line_vertexes_in_points(self):
+        p1 = Pose(0, 0)
+        p2 = Pose(1, 0)
+        points = get_points_in_line(p1, p2, self.total_points)
+
+        self.assertTrue(any([draw_figure._are_points_equal(p, p1, self.dist_delta) for p in points]))
+        self.assertTrue(any([draw_figure._are_points_equal(p, p2, self.dist_delta) for p in points]))
+
     # Helpers
     def _test_points_in_line(self, p1, p2):
         for p in get_points_in_line(p1, p2, self.total_points):
@@ -256,6 +265,14 @@ class TestGetFigureKeyPoints(unittest.TestCase):
 
     def test_square_key_points(self):
         self._test_points_in_at_least_one_outline_line([Pose(0, 0), Pose(1, 0), Pose(1, 1), Pose(0, 1)])
+
+    # Extra behavior
+    def test_figure_vertexes_in_points(self):
+        f = [Pose(0, 0), Pose(1, 0), Pose(0.5, 1)]
+        points = get_figure_key_points(f, self.inter_vertexes_points)
+
+        for vertex in f:
+            self.assertTrue(any([draw_figure._are_points_equal(p, vertex, self.dist_delta) for p in points]))
 
     # Helpers
     def _test_points_in_at_least_one_outline_line(self, f):

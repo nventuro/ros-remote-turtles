@@ -268,21 +268,21 @@ class TestGetFigureKeyPoints(unittest.TestCase):
     dist_delta = 0.01
 
     # Simple cases
-    def test_amount_of_points(self):
+    def test_amount_of_key_points(self):
         f = [Pose(0, 0), Pose(1, 0), Pose(0.5, 1)]
         self.assertEqual(len(get_figure_key_points(f, self.inter_vertexes_points)), len(f) * self.inter_vertexes_points)
 
     def test_line_key_points(self):
-        self._test_points_in_at_least_one_outline_line([Pose(0, 0), Pose(1, 0)])
+        self._test_key_points_in_at_least_one_outline_line([Pose(0, 0), Pose(1, 0)])
 
     def test_triangle_key_points(self):
-        self._test_points_in_at_least_one_outline_line([Pose(0, 0), Pose(1, 0), Pose(0.5, 1)])
+        self._test_key_points_in_at_least_one_outline_line([Pose(0, 0), Pose(1, 0), Pose(0.5, 1)])
 
     def test_square_key_points(self):
-        self._test_points_in_at_least_one_outline_line([Pose(0, 0), Pose(1, 0), Pose(1, 1), Pose(0, 1)])
+        self._test_key_points_in_at_least_one_outline_line([Pose(0, 0), Pose(1, 0), Pose(1, 1), Pose(0, 1)])
 
     # Extra behavior
-    def test_figure_vertexes_in_points(self):
+    def test_figure_vertexes_in_key_points(self):
         f = [Pose(0, 0), Pose(1, 0), Pose(0.5, 1)]
         points = get_figure_key_points(f, self.inter_vertexes_points)
 
@@ -290,7 +290,7 @@ class TestGetFigureKeyPoints(unittest.TestCase):
             self.assertTrue(any([draw_figure._are_points_equal(p, vertex, self.dist_delta) for p in points]))
 
     # Helpers
-    def _test_points_in_at_least_one_outline_line(self, f):
+    def _test_key_points_in_at_least_one_outline_line(self, f):
         for p in get_figure_key_points(f, self.inter_vertexes_points):
             self.assertTrue(any([point_between_points(p, f[n], f[(n + 1) % len(f)], self.cross_delta, self.dist_delta) for n in range(len(f))]))
 

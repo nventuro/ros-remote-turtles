@@ -9,9 +9,9 @@ import math
 class TestAngleBetweenPoints(unittest.TestCase):
     # Normal usage
     def test_positive_angle(self):
-       self.assertAlmostEqual(draw_figure._angle_between_points(Pose(0, 0), Pose(0, 1)), math.pi / 2)
+        self.assertAlmostEqual(draw_figure._angle_between_points(Pose(0, 0), Pose(0, 1)), math.pi / 2)
     def test_negative_angle(self):
-       self.assertAlmostEqual(draw_figure._angle_between_points(Pose(0, 0), Pose(0, -1)), -math.pi / 2)
+        self.assertAlmostEqual(draw_figure._angle_between_points(Pose(0, 0), Pose(0, -1)), -math.pi / 2)
 
     # Edge cases
     def test_zero_angle(self):

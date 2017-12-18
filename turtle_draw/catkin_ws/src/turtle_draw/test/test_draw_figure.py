@@ -149,6 +149,23 @@ class TestMockDrawer(unittest.TestCase):
         self._advance_drawer()
         self.assertEqual(len(self.d.drawn_points), 0)
 
+    def test_simple_draw(self):
+        # Advance 1 along the x-axis
+        self.d.pose.theta = 0
+        self.d.speed.linear = self.slowdown
+        self.d.draw(True)
+
+        # Two steps: the first one will draw on the starting position, and the second one
+        # after having moved 1 unit
+        self.d.step()
+        self.d.step()
+
+        self.assertAlmostEqual(self.d.drawn_points[0].x, 0)
+        self.assertAlmostEqual(self.d.drawn_points[0].y, 0)
+
+        self.assertAlmostEqual(self.d.drawn_points[1].x, 1)
+        self.assertAlmostEqual(self.d.drawn_points[1].y, 0)
+
     def test_move_forward_draw(self):
         self.d.speed.linear = 1
         self.d.draw(True)

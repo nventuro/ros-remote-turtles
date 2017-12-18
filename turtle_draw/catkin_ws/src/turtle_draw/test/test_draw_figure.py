@@ -4,6 +4,7 @@ import unittest
 from src import draw_figure
 from src.draw_figure import Pose
 
+from functools import partial
 import math
 
 class Speed():
@@ -24,11 +25,11 @@ class MockDrawer():
         self.drawing = False
         self.slowdown = float(slowdown)
 
-        self.drawed_points = []
+        self.drawn_points = []
 
     def step(self):
         if self.drawing:
-            self.drawed_points.append(self.pose)
+            self.drawn_points.append(self.pose)
 
         # First spin, then move forward
         # All speeds are divided by a slowdown factor (representing a high refresh rate)
@@ -145,7 +146,7 @@ class TestMockDrawer(unittest.TestCase):
         self.d.speed.linear = 1
 
         self._advance_drawer()
-        self.assertEqual(len(self.d.drawed_points), 0)
+        self.assertEqual(len(self.d.drawn_points), 0)
 
     def test_move_forward_draw(self):
         self.d.speed.linear = 1
@@ -153,8 +154,8 @@ class TestMockDrawer(unittest.TestCase):
 
         self._advance_drawer()
 
-        self.assertEqual(len(self.d.drawed_points), self.slowdown)
-        for p in self.d.drawed_points:
+        self.assertEqual(len(self.d.drawn_points), self.slowdown)
+        for p in self.d.drawn_points:
             self.assertTrue(0.0 <= p.x <= 1.01)
             self.assertEqual(p.y, 0)
             self.assertEqual(p.theta, 0)
@@ -242,3 +243,68 @@ class TestGetFigureKeyPoints(unittest.TestCase):
     def _test_points_in_at_least_one_outline_line(self, f):
         for p in get_figure_key_points(f, self.inter_vertexes_points):
             self.assertTrue(any([point_between_points(p, f[n], f[(n + 1) % len(f)], self.cross_delta, self.dist_delta) for n in range(len(f))]))
+
+class TestDrawFigure(unittest.TestCase):
+    inter_vertexes_points = 10
+    cross_delta = 0.1
+    dist_delta = 0.15
+
+    def setUp(self):
+        self.d = MockDrawer(0, 0, 0, 100)
+
+        self.deps = {
+            "log"       : self._log,
+            "pause"     : self._pause,
+            "abort"     : self._abort,
+            "step"      : partial(self._step, drawer=self.d),
+            "curr_pose" : partial(self._curr_pose, drawer=self.d),
+            "move"      : partial(self._move, drawer=self.d),
+            "pen"       : partial(self._pen, drawer=self.d)
+        }
+
+    def test_draw_triangle(self):
+        f = [Pose(0, 0), Pose(1, 0), Pose(0.5, 1)]
+        draw_figure.draw(f, self.deps)
+
+        self._test_drawn_figure(f, self.d.drawn_points)
+
+    def test_draw_square(self):
+        f = [Pose(0, 0), Pose(1, 0), Pose(1, 1), Pose(0, 1)]
+        draw_figure.draw(f, self.deps)
+
+        self._test_drawn_figure(f, self.d.drawn_points)
+
+    # Helpers
+    def _test_drawn_figure(self, f, drawn_points):
+        # For the points to correctly represent the figure, two conditions must be true:
+
+        # a) All key points of the figure must have at least one corresponding point close to them
+        for kp in get_figure_key_points(f, self.inter_vertexes_points):
+            self.assertTrue(any([math.sqrt((p.x - kp.x) ** 2 + (p.y - kp.y) ** 2) for p in drawn_points]))
+
+        # b) All points must lie between two vertexes of the figure
+        for p in drawn_points:
+            self.assertTrue(any([point_between_points(p, f[n], f[(n + 1) % len(f)], self.cross_delta, self.dist_delta) for n in range(len(f))]))
+
+    # Mocked dependencies
+    def _log(self, *args):
+        pass
+
+    def _pause(self):
+        return False
+
+    def _abort(self):
+        return False
+
+    def _step(self, drawer):
+        drawer.step()
+
+    def _curr_pose(self, drawer):
+        return drawer.pose
+
+    def _move(self, linear_speed, angular_speed, drawer):
+        drawer.speed.linear = linear_speed
+        drawer.speed.angular = angular_speed
+
+    def _pen(self, on, drawer):
+        drawer.draw(on)

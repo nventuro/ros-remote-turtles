@@ -45,6 +45,56 @@ class MockDrawer():
     def __repr__(self):
         return str(self)
 
+def point_between_points(p, p1, p2, cross_delta, dist_delta):
+    # To determine if p is in the line described by p1 and p2, we can simply
+    # check if the cross product between p1->p and p1->p2 is zero, that is, if
+    # the angle between the vectors is zero (assuming p1 != p2)
+
+    vec_a_x = p.x - p1.x
+    vec_a_y = p.y - p1.y
+
+    vec_b_x = p2.x - p1.x
+    vec_b_y = p2.y - p1.y
+
+    if abs(vec_a_x * vec_b_y - vec_a_y * vec_b_x) > cross_delta:
+        return False
+
+    # We now know p is in the line, but we still need to check if it is
+    # between p1 and p2, by checking the coordinates
+    if (abs(vec_a_x) >= abs(vec_a_y)): # If the slope of the line is mostly horizontal
+        if vec_a_x > 0: # Check if the point's x-coordinates lie between p1 and p2, or very close to them
+            return (p1.x <= p.x <= p2.x) or any([abs(p.x - other_p.x) < dist_delta for other_p in [p1, p2]])
+        else:
+            return (p2.x <= p.x <= p1.x) or any([abs(p.x - other_p.x) < dist_delta for other_p in [p1, p2]])
+    else:
+        if vec_a_y > 0: # Check if the point's y-coordinates lie between p1 and p2, or very close to them
+            return (p1.y <= p.y <= p2.y) or any([abs(p.y - other_p.y) < dist_delta for other_p in [p1, p2]])
+        else:
+            return (p2.y <= p.y <= p1.y) or any([abs(p.y - other_p.y) < dist_delta for other_p in [p1, p2]])
+
+def get_points_in_line(p1, p2, total_points):
+    points = []
+
+    theta = draw_figure._angle_between_points(p1, p2)
+    distance = math.sqrt((p1.x - p2.x) ** 2 + (p1.y - p2.y) ** 2)
+
+    for i in range(total_points):
+        x = (p1.x + math.cos(theta) * i * distance / (total_points - 1))
+        y = (p1.y + math.sin(theta) * i * distance / (total_points - 1))
+
+        points.append(Pose(x, y))
+
+    return points
+
+def get_figure_key_points(f, inter_vertexes_points):
+    key_points = []
+
+    for n in range(len(f)):
+        (p1, p2) = (f[n], f[(n + 1) % len(f)])
+        key_points += get_points_in_line(p1, p2, inter_vertexes_points)
+
+    return key_points
+
 class TestMockDrawer(unittest.TestCase):
     slowdown = 100
 
@@ -118,3 +168,77 @@ class TestMockDrawer(unittest.TestCase):
         self.assertAlmostEqual(self.d.pose.x, p.x, delta=delta)
         self.assertAlmostEqual(self.d.pose.y, p.y, delta=delta)
         self.assertAlmostEqual(self.d.pose.theta, p.theta, delta=delta)
+
+class TestPointBetweenPoints(unittest.TestCase):
+    cross_delta = 0.01
+    dist_delta = 0.01
+
+    # Simple cases
+    def test_point_at_start(self):
+        self.assertTrue(point_between_points(Pose(0, 0), Pose(0, 0), Pose(0, 1), self.cross_delta, self.dist_delta))
+    def test_point_at_end(self):
+        self.assertTrue(point_between_points(Pose(0, 1), Pose(0, 0), Pose(0, 1), self.cross_delta, self.dist_delta))
+    def test_point_in_middle_x(self):
+        self.assertTrue(point_between_points(Pose(0, 0.5), Pose(0, 0), Pose(0, 1), self.cross_delta, self.dist_delta))
+    def test_point_in_middle_x_reverse(self):
+        self.assertTrue(point_between_points(Pose(0, 0.5), Pose(0, 1), Pose(0, 0), self.cross_delta, self.dist_delta))
+    def test_point_in_middle_y(self):
+        self.assertTrue(point_between_points(Pose(0.5, 0), Pose(0, 0), Pose(1, 0), self.cross_delta, self.dist_delta))
+    def test_point_in_middle_y_reverse(self):
+        self.assertTrue(point_between_points(Pose(0.5, 0), Pose(1, 0), Pose(0, 0), self.cross_delta, self.dist_delta))
+    def test_point_outside(self):
+        self.assertFalse(point_between_points(Pose(2, 0), Pose(0, 0), Pose(0, 1), self.cross_delta, self.dist_delta))
+
+    # Complex cases
+    def test_point_in_line_not_between_smaller_x(self):
+        self.assertFalse(point_between_points(Pose(0, -1), Pose(0, 0), Pose(0, 1), self.cross_delta, self.dist_delta))
+    def test_point_in_line_not_between_larger_x(self):
+        self.assertFalse(point_between_points(Pose(0, 2), Pose(0, 0), Pose(0, 1), self.cross_delta, self.dist_delta))
+    def test_point_in_line_not_between_smaller_y(self):
+        self.assertFalse(point_between_points(Pose(-1, 0), Pose(0, 0), Pose(1, 0), self.cross_delta, self.dist_delta))
+    def test_point_in_line_not_between_larger_y(self):
+        self.assertFalse(point_between_points(Pose(2, 0), Pose(0, 0), Pose(1, 0), self.cross_delta, self.dist_delta))
+
+class TestGetPointsInLine(unittest.TestCase):
+    total_points = 10
+    cross_delta = 0.01
+    dist_delta = 0.01
+
+    # Simple cases
+    def test_amount_of_points(self):
+        self.assertEqual(len(get_points_in_line(Pose(0, 0), Pose(1, 0), self.total_points)), self.total_points)
+    def test_points_in_horizontal_line(self):
+        self._test_points_in_line(Pose(0, 0), Pose(1, 0))
+    def test_points_in_vertical_line(self):
+        self._test_points_in_line(Pose(0, 0) ,Pose(0, 1))
+    def test_points_in_diagonal_line(self):
+        self._test_points_in_line(Pose(0, 0), Pose(1, 1))
+
+    # Helpers
+    def _test_points_in_line(self, p1, p2):
+        for p in get_points_in_line(p1, p2, self.total_points):
+            self.assertTrue(point_between_points(p, p1, p2, self.cross_delta, self.dist_delta))
+
+class TestGetFigureKeyPoints(unittest.TestCase):
+    inter_vertexes_points = 10
+    cross_delta = 0.01
+    dist_delta = 0.01
+
+    # Simple cases
+    def test_amount_of_points(self):
+        f = [Pose(0, 0), Pose(1, 0), Pose(0.5, 1)]
+        self.assertEqual(len(get_figure_key_points(f, self.inter_vertexes_points)), len(f) * self.inter_vertexes_points)
+
+    def test_line_key_points(self):
+        self._test_points_in_at_least_one_outline_line([Pose(0, 0), Pose(1, 0)])
+
+    def test_triangle_key_points(self):
+        self._test_points_in_at_least_one_outline_line([Pose(0, 0), Pose(1, 0), Pose(0.5, 1)])
+
+    def test_square_key_points(self):
+        self._test_points_in_at_least_one_outline_line([Pose(0, 0), Pose(1, 0), Pose(1, 1), Pose(0, 1)])
+
+    # Helpers
+    def _test_points_in_at_least_one_outline_line(self, f):
+        for p in get_figure_key_points(f, self.inter_vertexes_points):
+            self.assertTrue(any([point_between_points(p, f[n], f[(n + 1) % len(f)], self.cross_delta, self.dist_delta) for n in range(len(f))]))

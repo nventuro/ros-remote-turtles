@@ -97,6 +97,21 @@ def get_figure_key_points(f, inter_vertexes_points):
 
     return key_points
 
+def points_match_figure(figure, points, inter_vertexes_points, cross_delta, dist_delta):
+    # For the points to correctly represent a figure, two conditions must be true:
+
+    # a) All key points of the figure must have at least one corresponding point close to them
+    for kp in get_figure_key_points(figure, inter_vertexes_points):
+        if not any([draw_figure._are_points_equal(p, kp, dist_delta) for p in points]):
+            return False
+
+    # b) All points must lie between two vertexes of the figure
+    for p in points:
+        if not any([point_between_points(p, figure[n], figure[(n + 1) % len(figure)], cross_delta, dist_delta) for n in range(len(figure))]):
+            return False
+
+    return True
+
 class TestMockDrawer(unittest.TestCase):
     slowdown = 100
 
@@ -279,6 +294,58 @@ class TestGetFigureKeyPoints(unittest.TestCase):
         for p in get_figure_key_points(f, self.inter_vertexes_points):
             self.assertTrue(any([point_between_points(p, f[n], f[(n + 1) % len(f)], self.cross_delta, self.dist_delta) for n in range(len(f))]))
 
+class TestPointsMatchFigure(unittest.TestCase):
+    inter_vertexes_points = 10
+    cross_delta = 0.01
+    dist_delta = 0.01
+
+    # Simple cases
+    def test_line_vertexes_no_match(self):
+        f = [Pose(0, 0), Pose(0, 1)]
+        points = f
+        self.assertFalse(points_match_figure(f, points, self.inter_vertexes_points, self.cross_delta, self.dist_delta))
+
+    def test_points_in_line(self):
+        f = [Pose(0, 0), Pose(0, 1)]
+        points = [Pose(0, y / float(self.inter_vertexes_points * 10)) for y in range(self.inter_vertexes_points * 10 + 1)] # +1 to also generate a point at the end
+
+        self.assertTrue(points_match_figure(f, points, self.inter_vertexes_points, self.cross_delta, self.dist_delta))
+
+    def test_points_in_line_and_outlier(self):
+        f = [Pose(0, 0), Pose(0, 1)]
+        points = [Pose(0, y / float(self.inter_vertexes_points * 10)) for y in range(self.inter_vertexes_points * 10 + 1)] # +1 to also generate a point at the end
+
+        # Matching points
+        self.assertTrue(points_match_figure(f, points, self.inter_vertexes_points, self.cross_delta, self.dist_delta))
+
+        points += [Pose(1, 1)]
+        # Mismatch after adding outlier
+        self.assertFalse(points_match_figure(f, points, self.inter_vertexes_points, self.cross_delta, self.dist_delta))
+
+    # Complex cases
+    def test_progressive_points_in_square(self):
+        f = [Pose(0, 0), Pose(0, 1), Pose(1, 1), Pose(1, 0)]
+
+        points = []
+        # No points - figure mismatch
+        self.assertFalse(points_match_figure(f, points, self.inter_vertexes_points, self.cross_delta, self.dist_delta))
+
+        # First segment - figure mismatch
+        points += [Pose(0, y / float(self.inter_vertexes_points * 10)) for y in range(self.inter_vertexes_points * 10 + 1)] # +1 to also generate a point at the end
+        self.assertFalse(points_match_figure(f, points, self.inter_vertexes_points, self.cross_delta, self.dist_delta))
+
+        # Second segment - figure mismatch
+        points += [Pose(x / float(self.inter_vertexes_points * 10), 1) for x in range(self.inter_vertexes_points * 10 + 1)] # +1 to also generate a point at the end
+        self.assertFalse(points_match_figure(f, points, self.inter_vertexes_points, self.cross_delta, self.dist_delta))
+
+        # Third segment - figure mismatch
+        points += [Pose(1, 1 - y / float(self.inter_vertexes_points * 10)) for y in range(self.inter_vertexes_points * 10 + 1)] # +1 to also generate a point at the end
+        self.assertFalse(points_match_figure(f, points, self.inter_vertexes_points, self.cross_delta, self.dist_delta))
+
+        # Fourth (last) segment - match
+        points += [Pose(1 - x / float(self.inter_vertexes_points * 10), 0) for x in range(self.inter_vertexes_points * 10 + 1)] # +1 to also generate a point at the end
+        self.assertTrue(points_match_figure(f, points, self.inter_vertexes_points, self.cross_delta, self.dist_delta))
+
 class TestDrawFigure(unittest.TestCase):
     inter_vertexes_points = 10
     cross_delta = 0.1
@@ -304,45 +371,30 @@ class TestDrawFigure(unittest.TestCase):
         # not match
         draw_figure.draw(f, self.deps)
 
-        self.assertFalse(self._points_match_figure(f, self.d.drawn_points))
+        self.assertFalse(points_match_figure(f, self.d.drawn_points, self.inter_vertexes_points, self.cross_delta, self.dist_delta))
 
     def test_draw_triangle(self):
         f = [Pose(0, 0), Pose(1, 0), Pose(0.5, 1)]
         draw_figure.draw(self._get_complete_figure(f), self.deps)
 
-        self.assertTrue(self._points_match_figure(f, self.d.drawn_points))
+        self.assertTrue(points_match_figure(f, self.d.drawn_points, self.inter_vertexes_points, self.cross_delta, self.dist_delta))
 
     def test_draw_square(self):
         f = [Pose(0, 0), Pose(1, 0), Pose(1, 1), Pose(0, 1)]
         draw_figure.draw(self._get_complete_figure(f), self.deps)
 
-        self.assertTrue(self._points_match_figure(f, self.d.drawn_points))
+        self.assertTrue(points_match_figure(f, self.d.drawn_points, self.inter_vertexes_points, self.cross_delta, self.dist_delta))
 
     def test_draw_triangle_not_square(self):
         f = [Pose(0, 0), Pose(1, 0), Pose(0.5, 1)]
         draw_figure.draw(self._get_complete_figure(f), self.deps)
 
-        self.assertFalse(self._points_match_figure([Pose(0, 0), Pose(1, 0), Pose(1, 1), Pose(0, 1)], self.d.drawn_points))
+        self.assertFalse(points_match_figure([Pose(0, 0), Pose(1, 0), Pose(1, 1), Pose(0, 1)], self.d.drawn_points, self.inter_vertexes_points, self.cross_delta, self.dist_delta))
 
     # Helpers
     def _get_complete_figure(self, f):
         # We add the first point to the figure, to create the segment f[-1] -> f[0]
         return f + [f[0]]
-
-    def _points_match_figure(self, f, drawn_points):
-        # For the points to correctly represent the figure, two conditions must be true:
-
-        # a) All key points of the figure must have at least one corresponding point close to them
-        for kp in get_figure_key_points(f, self.inter_vertexes_points):
-            if not any([draw_figure._are_points_equal(p, kp, self.dist_delta) for p in drawn_points]):
-                return False
-
-        # b) All points must lie between two vertexes of the figure
-        for p in drawn_points:
-            if not any([point_between_points(p, f[n], f[(n + 1) % len(f)], self.cross_delta, self.dist_delta) for n in range(len(f))]):
-                return False
-
-        return True
 
     # Mocked dependencies
     def _log(self, *args):

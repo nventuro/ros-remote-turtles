@@ -209,29 +209,33 @@ class TestPointBetweenPoints(unittest.TestCase):
 
     # Simple cases
     def test_point_at_start(self):
-        self.assertTrue(point_between_points(Pose(0, 0), Pose(0, 0), Pose(0, 1), self.cross_delta, self.dist_delta))
+        self.assertTrue(self._point_between_points_deltas(Pose(0, 0), Pose(0, 0), Pose(0, 1)))
     def test_point_at_end(self):
-        self.assertTrue(point_between_points(Pose(0, 1), Pose(0, 0), Pose(0, 1), self.cross_delta, self.dist_delta))
+        self.assertTrue(self._point_between_points_deltas(Pose(0, 1), Pose(0, 0), Pose(0, 1)))
     def test_point_in_middle_x(self):
-        self.assertTrue(point_between_points(Pose(0, 0.5), Pose(0, 0), Pose(0, 1), self.cross_delta, self.dist_delta))
+        self.assertTrue(self._point_between_points_deltas(Pose(0, 0.5), Pose(0, 0), Pose(0, 1)))
     def test_point_in_middle_x_reverse(self):
-        self.assertTrue(point_between_points(Pose(0, 0.5), Pose(0, 1), Pose(0, 0), self.cross_delta, self.dist_delta))
+        self.assertTrue(self._point_between_points_deltas(Pose(0, 0.5), Pose(0, 1), Pose(0, 0)))
     def test_point_in_middle_y(self):
-        self.assertTrue(point_between_points(Pose(0.5, 0), Pose(0, 0), Pose(1, 0), self.cross_delta, self.dist_delta))
+        self.assertTrue(self._point_between_points_deltas(Pose(0.5, 0), Pose(0, 0), Pose(1, 0)))
     def test_point_in_middle_y_reverse(self):
-        self.assertTrue(point_between_points(Pose(0.5, 0), Pose(1, 0), Pose(0, 0), self.cross_delta, self.dist_delta))
+        self.assertTrue(self._point_between_points_deltas(Pose(0.5, 0), Pose(1, 0), Pose(0, 0)))
     def test_point_outside(self):
-        self.assertFalse(point_between_points(Pose(2, 0), Pose(0, 0), Pose(0, 1), self.cross_delta, self.dist_delta))
+        self.assertFalse(self._point_between_points_deltas(Pose(2, 0), Pose(0, 0), Pose(0, 1)))
 
     # Complex cases
     def test_point_in_line_not_between_smaller_x(self):
-        self.assertFalse(point_between_points(Pose(0, -1), Pose(0, 0), Pose(0, 1), self.cross_delta, self.dist_delta))
+        self.assertFalse(self._point_between_points_deltas(Pose(0, -1), Pose(0, 0), Pose(0, 1)))
     def test_point_in_line_not_between_larger_x(self):
-        self.assertFalse(point_between_points(Pose(0, 2), Pose(0, 0), Pose(0, 1), self.cross_delta, self.dist_delta))
+        self.assertFalse(self._point_between_points_deltas(Pose(0, 2), Pose(0, 0), Pose(0, 1)))
     def test_point_in_line_not_between_smaller_y(self):
-        self.assertFalse(point_between_points(Pose(-1, 0), Pose(0, 0), Pose(1, 0), self.cross_delta, self.dist_delta))
+        self.assertFalse(self._point_between_points_deltas(Pose(-1, 0), Pose(0, 0), Pose(1, 0)))
     def test_point_in_line_not_between_larger_y(self):
-        self.assertFalse(point_between_points(Pose(2, 0), Pose(0, 0), Pose(1, 0), self.cross_delta, self.dist_delta))
+        self.assertFalse(self._point_between_points_deltas(Pose(2, 0), Pose(0, 0), Pose(1, 0)))
+
+    # Helpers
+    def _point_between_points_deltas(self, p, p1, p2):
+        return point_between_points(p, p1, p2, self.cross_delta, self.dist_delta)
 
 class TestGetPointsInLine(unittest.TestCase):
     total_points = 10
@@ -303,24 +307,24 @@ class TestPointsMatchFigure(unittest.TestCase):
     def test_line_vertexes_no_match(self):
         f = [Pose(0, 0), Pose(0, 1)]
         points = f
-        self.assertFalse(points_match_figure(f, points, self.inter_vertexes_points, self.cross_delta, self.dist_delta))
+        self.assertFalse(self._points_match_figure_deltas(f, points))
 
     def test_points_in_line(self):
         f = [Pose(0, 0), Pose(0, 1)]
         points = [Pose(0, y / float(self.inter_vertexes_points * 10)) for y in range(self.inter_vertexes_points * 10 + 1)] # +1 to also generate a point at the end
 
-        self.assertTrue(points_match_figure(f, points, self.inter_vertexes_points, self.cross_delta, self.dist_delta))
+        self.assertTrue(self._points_match_figure_deltas(f, points))
 
     def test_points_in_line_and_outlier(self):
         f = [Pose(0, 0), Pose(0, 1)]
         points = [Pose(0, y / float(self.inter_vertexes_points * 10)) for y in range(self.inter_vertexes_points * 10 + 1)] # +1 to also generate a point at the end
 
         # Matching points
-        self.assertTrue(points_match_figure(f, points, self.inter_vertexes_points, self.cross_delta, self.dist_delta))
+        self.assertTrue(self._points_match_figure_deltas(f, points))
 
         points += [Pose(1, 1)]
         # Mismatch after adding outlier
-        self.assertFalse(points_match_figure(f, points, self.inter_vertexes_points, self.cross_delta, self.dist_delta))
+        self.assertFalse(self._points_match_figure_deltas(f, points))
 
     # Complex cases
     def test_progressive_points_in_square(self):
@@ -328,23 +332,27 @@ class TestPointsMatchFigure(unittest.TestCase):
 
         points = []
         # No points - figure mismatch
-        self.assertFalse(points_match_figure(f, points, self.inter_vertexes_points, self.cross_delta, self.dist_delta))
+        self.assertFalse(self._points_match_figure_deltas(f, points))
 
         # First segment - figure mismatch
         points += [Pose(0, y / float(self.inter_vertexes_points * 10)) for y in range(self.inter_vertexes_points * 10 + 1)] # +1 to also generate a point at the end
-        self.assertFalse(points_match_figure(f, points, self.inter_vertexes_points, self.cross_delta, self.dist_delta))
+        self.assertFalse(self._points_match_figure_deltas(f, points))
 
         # Second segment - figure mismatch
         points += [Pose(x / float(self.inter_vertexes_points * 10), 1) for x in range(self.inter_vertexes_points * 10 + 1)] # +1 to also generate a point at the end
-        self.assertFalse(points_match_figure(f, points, self.inter_vertexes_points, self.cross_delta, self.dist_delta))
+        self.assertFalse(self._points_match_figure_deltas(f, points))
 
         # Third segment - figure mismatch
         points += [Pose(1, 1 - y / float(self.inter_vertexes_points * 10)) for y in range(self.inter_vertexes_points * 10 + 1)] # +1 to also generate a point at the end
-        self.assertFalse(points_match_figure(f, points, self.inter_vertexes_points, self.cross_delta, self.dist_delta))
+        self.assertFalse(self._points_match_figure_deltas(f, points))
 
         # Fourth (last) segment - match
         points += [Pose(1 - x / float(self.inter_vertexes_points * 10), 0) for x in range(self.inter_vertexes_points * 10 + 1)] # +1 to also generate a point at the end
-        self.assertTrue(points_match_figure(f, points, self.inter_vertexes_points, self.cross_delta, self.dist_delta))
+        self.assertTrue(self._points_match_figure_deltas(f, points))
+
+    # Helpers
+    def _points_match_figure_deltas(self, f, points):
+        return points_match_figure(f, points, self.inter_vertexes_points, self.cross_delta, self.dist_delta)
 
 class TestDrawFigure(unittest.TestCase):
     inter_vertexes_points = 10
@@ -371,30 +379,33 @@ class TestDrawFigure(unittest.TestCase):
         # not match
         draw_figure.draw(f, self.deps)
 
-        self.assertFalse(points_match_figure(f, self.d.drawn_points, self.inter_vertexes_points, self.cross_delta, self.dist_delta))
+        self.assertFalse(self._points_match_figure_deltas(f, self.d.drawn_points))
 
     def test_draw_triangle(self):
         f = [Pose(0, 0), Pose(1, 0), Pose(0.5, 1)]
         draw_figure.draw(self._get_complete_figure(f), self.deps)
 
-        self.assertTrue(points_match_figure(f, self.d.drawn_points, self.inter_vertexes_points, self.cross_delta, self.dist_delta))
+        self.assertTrue(self._points_match_figure_deltas(f, self.d.drawn_points))
 
     def test_draw_square(self):
         f = [Pose(0, 0), Pose(1, 0), Pose(1, 1), Pose(0, 1)]
         draw_figure.draw(self._get_complete_figure(f), self.deps)
 
-        self.assertTrue(points_match_figure(f, self.d.drawn_points, self.inter_vertexes_points, self.cross_delta, self.dist_delta))
+        self.assertTrue(self._points_match_figure_deltas(f, self.d.drawn_points))
 
     def test_draw_triangle_not_square(self):
         f = [Pose(0, 0), Pose(1, 0), Pose(0.5, 1)]
         draw_figure.draw(self._get_complete_figure(f), self.deps)
 
-        self.assertFalse(points_match_figure([Pose(0, 0), Pose(1, 0), Pose(1, 1), Pose(0, 1)], self.d.drawn_points, self.inter_vertexes_points, self.cross_delta, self.dist_delta))
+        self.assertFalse(self._points_match_figure_deltas([Pose(0, 0), Pose(1, 0), Pose(1, 1), Pose(0, 1)], self.d.drawn_points))
 
     # Helpers
     def _get_complete_figure(self, f):
         # We add the first point to the figure, to create the segment f[-1] -> f[0]
         return f + [f[0]]
+
+    def _points_match_figure_deltas(self, f, points):
+        return points_match_figure(f, points, self.inter_vertexes_points, self.cross_delta, self.dist_delta)
 
     # Mocked dependencies
     def _log(self, *args):

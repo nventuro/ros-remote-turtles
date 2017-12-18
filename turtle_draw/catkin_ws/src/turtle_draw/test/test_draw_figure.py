@@ -5,6 +5,7 @@ from src import draw_figure
 from src.draw_figure import Pose
 
 from functools import partial
+from copy import copy
 import math
 
 class Speed():
@@ -29,7 +30,7 @@ class MockDrawer():
 
     def step(self):
         if self.drawing:
-            self.drawn_points.append(self.pose)
+            self.drawn_points.append(copy(self.pose)) # Story a cope of the pose, not a reference
 
         # First spin, then move forward
         # All speeds are divided by a slowdown factor (representing a high refresh rate)
@@ -250,7 +251,7 @@ class TestDrawFigure(unittest.TestCase):
     dist_delta = 0.15
 
     def setUp(self):
-        self.d = MockDrawer(0, 0, 0, 100)
+        self.d = MockDrawer(0, 0, 0, 10)
 
         self.deps = {
             "log"       : self._log,
@@ -262,29 +263,52 @@ class TestDrawFigure(unittest.TestCase):
             "pen"       : partial(self._pen, drawer=self.d)
         }
 
-    def test_draw_triangle(self):
+    def test_draw_incomplete_triangle(self):
         f = [Pose(0, 0), Pose(1, 0), Pose(0.5, 1)]
+        # draw only goes from point to point, and doesn't go from the last point
+        # to the first one: if this is not done manually, the drawn figure will
+        # not match
         draw_figure.draw(f, self.deps)
 
-        self._test_drawn_figure(f, self.d.drawn_points)
+        self.assertFalse(self._points_match_figure(f, self.d.drawn_points))
+
+    def test_draw_triangle(self):
+        f = [Pose(0, 0), Pose(1, 0), Pose(0.5, 1)]
+        draw_figure.draw(self._get_complete_figure(f), self.deps)
+
+        self.assertTrue(self._points_match_figure(f, self.d.drawn_points))
 
     def test_draw_square(self):
         f = [Pose(0, 0), Pose(1, 0), Pose(1, 1), Pose(0, 1)]
-        draw_figure.draw(f, self.deps)
+        draw_figure.draw(self._get_complete_figure(f), self.deps)
 
-        self._test_drawn_figure(f, self.d.drawn_points)
+        self.assertTrue(self._points_match_figure(f, self.d.drawn_points))
+
+    def test_draw_triangle_not_square(self):
+        f = [Pose(0, 0), Pose(1, 0), Pose(0.5, 1)]
+        draw_figure.draw(self._get_complete_figure(f), self.deps)
+
+        self.assertFalse(self._points_match_figure([Pose(0, 0), Pose(1, 0), Pose(1, 1), Pose(0, 1)], self.d.drawn_points))
 
     # Helpers
-    def _test_drawn_figure(self, f, drawn_points):
+    def _get_complete_figure(self, f):
+        # We add the first point to the figure, to create the segment f[-1] -> f[0]
+        return f + [f[0]]
+
+    def _points_match_figure(self, f, drawn_points):
         # For the points to correctly represent the figure, two conditions must be true:
 
         # a) All key points of the figure must have at least one corresponding point close to them
         for kp in get_figure_key_points(f, self.inter_vertexes_points):
-            self.assertTrue(any([math.sqrt((p.x - kp.x) ** 2 + (p.y - kp.y) ** 2) for p in drawn_points]))
+            if not any([draw_figure._are_points_equal(p, kp, self.dist_delta) for p in drawn_points]):
+                return False
 
         # b) All points must lie between two vertexes of the figure
         for p in drawn_points:
-            self.assertTrue(any([point_between_points(p, f[n], f[(n + 1) % len(f)], self.cross_delta, self.dist_delta) for n in range(len(f))]))
+            if not any([point_between_points(p, f[n], f[(n + 1) % len(f)], self.cross_delta, self.dist_delta) for n in range(len(f))]):
+                return False
+
+        return True
 
     # Mocked dependencies
     def _log(self, *args):

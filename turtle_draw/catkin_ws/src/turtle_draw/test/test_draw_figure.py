@@ -30,7 +30,7 @@ class MockDrawer():
 
     def step(self):
         if self.drawing:
-            self.drawn_points.append(copy(self.pose)) # Story a cope of the pose, not a reference
+            self.drawn_points.append(copy(self.pose)) # Store a cope of the pose, not a reference
 
         # First spin, then move forward
         # All speeds are divided by a slowdown factor (representing a high refresh rate)
